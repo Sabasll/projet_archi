@@ -1,0 +1,82 @@
+.data
+espace: .asicz " "
+
+.text
+printInt:
+
+# printInt
+# Entree : a0 = entier a afficher
+# Sortie : aucune
+# Preserve a0 et a7
+
+    #prologue:
+    addi sp, sp, -16
+    sw a7, 0(sp)
+
+    # Afficher l'entier en decimal
+    li a7, 1
+    ecall
+
+    #epilogue: 
+    # Restaurer a7 et liberer la pile
+    lw a7, 0(sp)
+    addi sp, sp, 16
+
+    ret
+
+printIntEsp:
+    #prologue:
+    addi sp, sp, -16      
+    sw   ra, 0(sp)         # sauvegarde de l'adresse de retour (on appelle printInt)
+    sw   a0, 4(sp)         # sauvegarde de a0
+    sw   a7, 8(sp)         # sauvegarde de a0
+
+    jal  printInt          # affiche l'entier en decimal
+
+    la   a0, espace        # a0 = adresse de la chaine " " // code assci espace = 32
+    li   a7, 4             # ecall 4 : print string
+    ecall
+
+    #epilogue: 
+    lw   a7, 8(sp)         # restauration de a7
+    lw   a0, 4(sp)         # restauration de a0
+    lw   ra, 0(sp)         # restauration de ra
+    addi sp, sp, 16
+    ret
+    
+printHex:
+
+    #prologue:
+    addi sp, sp, -16
+    sw   a0, 0(sp)         # sauvegarde de a0 (sera modifie pour afficher l'espace)
+    sw   a7, 4(sp)         # sauvegarde de a7
+
+    li   a7, 34            # ecall 34 : print integer in hexadecimal
+    ecall
+
+    li   a0, espace        # a0 = code ASCII de l'espace
+    li   a7, 4            # ecall 11 : print char
+    ecall
+
+    #epilogue:
+    lw   a7, 4(sp)         # restauration de a7
+    lw   a0, 0(sp)         # restauration de a0
+    addi sp, sp, 16
+    ret
+
+auHasard: 
+    #prologue:
+    addi sp, sp, -16
+    sw   a1, 0(sp)         # sauvegarde de a1 
+    sw   a7, 4(sp)         # sauvegarde de a7
+
+    addi a1, a0, 1         # a1 = borne haute EXCLUE (a0 + 1)
+    li   a0, 0             # a0 = id du generateur
+    li   a7, 42            # ecall 42 : RandIntRange -> a0 dans [0, a1)
+    ecall                  # a0 = resultat
+
+    #epilogue:
+    lw   a7, 4(sp)         # restauration de a7
+    lw   a1, 0(sp)         # restauration de a1
+    addi sp, sp, 16
+    ret
