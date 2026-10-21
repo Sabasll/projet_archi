@@ -1,0 +1,171 @@
+
+.data
+msgVide:   .asicz "Erreur : la pile est vide\n"
+msgPleine: .asicz "Erreur : la pile est pleine\n"
+
+.text
+# adresse pile + 0  : capacite (nombre max d'entiers)   <- constant
+# adresse pile + 4  : taille   (nombre d'entiers actuel) <- variable
+# adresse pile + 8  : element 0 (le plus ancien)
+# adresse pile + 12 : element 1
+# adresse pile + 8 + 4*i : element i 
+# ----------------------
+# P_creer
+# Entree : a0 = capacite (nombre max d'entiers de la pile)
+# Sortie : a0 = adresse de la pile (dans le tas)
+# Structure : [capacite][taille][element 0][element 1]...
+# Preserve a7
+
+
+P_creer:
+    #prologue:
+    addi sp, sp, -16
+    sw   a7, 0(sp)         # sauvegarde de a7
+
+    mv   t0, a0            # t0 = capacite (a0 va etre ecrase par l'ecall)
+    addi t1, a0, 2         # t1 = capacite + 2 (2 mots de gestion)
+    slli a0, t1, 2         # a0 = nombre d'octets = (capacite + 2) * 4
+    li   a7, 9             # ecall 9 : sbrk (allocation dans le tas)
+    ecall                  # a0 = adresse de la plage allouee
+
+    sw   t0, 0(a0)         # pile[0] = capacite
+    sw   zero, 4(a0)       # pile[1] = taille = 0 (pile vide)
+
+    #epilogue:
+    lw   a7, 0(sp)         # restauration de a7
+    addi sp, sp, 16
+    ret
+
+    # P_estVide
+    # Entree : a0 = adresse de la pile
+    # Sortie : a0 = 1 si la pile est vide, 0 sinon
+
+P_estVide:
+    lw   t0, 4(a0)              # t0 = taille (nombre d'entiers actuel)
+    beqz t0, P_estVide_oui      # si taille == 0 -> la pile est vide
+    
+    li a0, 0                    # taille != 0 -> pas vide, retourne 0
+    ret
+
+P_estVide_oui:
+    li a0, 1                    # taille == 0 -> vide, retourne 1
+    ret
+
+
+# P_sommet
+# Entree : a0 = adresse de la pile
+# Sortie : a0 = valeur du dernier element empile
+#          (si pile vide : message d'erreur, a0 inchange)
+# Adresse du sommet = pile + 8 + 4 * (taille - 1)
+# Preserve a7 (dans le cas d'erreur)
+# ============================================
+# P_sommet
+# Entree : a0 = adresse de la pile
+# Sortie : a0 = dernier element empile
+# Si vide : message d'erreur, a0 conserve
+
+P_sommet:
+    lw t0, 4(a0)               # Nombre d'elements
+    beqz t0, P_sommet_vide
+    addi t0, t0, -1            # Indice du dernier element
+    slli t0, t0, 2             # Indice * 4
+    add t0, a0, t0
+    lw a0, 8(t0)               # Lire l'element apres l'entete
+    ret
+
+P_sommet_vide:
+    la t0, msgVide
+    j P_erreur
+
+
+# ============================================
+# P_empiler
+# Entree : a0 = adresse de la pile, a1 = entier a empiler
+# Sortie : aucune
+# Si pleine : message d'erreur, rien n'est ajoute
+# Preserve a0, a1, a7
+
+P_empiler:
+    lw   t0, 0(a0)             # t0 = capacite
+    lw   t1, 4(a0)             # t1 = taille
+    bgeu  t0, t1, P_empiler_pleine   # taille >= capacite -> pleine
+
+    slli t2, t1, 2             # t2 = taille * 4
+    add  t2, a0, t2            # t2 = pile + taille * 4
+    sw   a1, 8(t2)             # element[taille] = a1
+    addi t0, t0, 1             # taille + 1
+    sw   t0, 4(a0)             # ecrit la nouvelle taille
+    ret
+
+P_empiler_pleine:
+    la   t0, msgPleine         # t0 = adresse du message
+    j    P_erreur              # P_erreur fait le ret a notre place
+
+# ============================================
+# P_depiler
+# Entree : a0 = adresse de la pile
+# Sortie : aucune
+# Si vide : message d'erreur, sinon taille = taille - 1
+# Preserve a0, a7
+
+P_depiler:
+    lw   t0, 4(a0)             # t0 = taille
+    beqz t0, P_depiler_vide    # taille == 0 -> vide
+
+    addi t0, t0, -1            # taille - 1
+    sw   t0, 4(a0)             # ecrit la nouvelle taille
+    ret
+
+P_depiler_vide:
+    la   t0, msgVide           # t0 = adresse du message
+    j    P_erreur
+
+# ============================================
+# P_print
+# Entree : a0 = adresse de la pile
+# Sortie : aucune
+# Affiche les entiers du plus ancien au plus recent
+# Preserve a0, a7, s0, s1, ra
+
+P_print:
+    addi sp, sp, -16
+    sw   ra, 0(sp)
+    sw   s0, 4(sp)
+    sw   s1, 8(sp)
+    sw   a0, 12(sp)
+
+    lw   s1, 4(a0)             # s1 = nombre d'elements restants
+    addi s0, a0, 8             # s0 = adresse de l'element 0
+
+P_print_boucle:
+    beqz s1, P_print_fin       # plus d'elements -> fin
+    lw   a0, 0(s0)             # a0 = element courant
+    jal  printIntEsp           # affiche l'element + espace
+    addi s0, s0, 4             # element suivant
+    addi s1, s1, -1            # un de moins
+    j    P_print_boucle
+
+P_print_fin:
+    lw   a0, 12(sp)
+    lw   s1, 8(sp)
+    lw   s0, 4(sp)
+    lw   ra, 0(sp)
+    addi sp, sp, 16
+    ret
+
+# ==================================================
+# Code commun aux cas d'erreur
+# Entree : t0 = adresse du message
+# Preserve a0 et a7
+
+P_erreur:
+    addi sp, sp, -16
+    sw a0, 0(sp)
+    sw a7, 4(sp)
+    mv a0, t0
+    li a7, 4                   # Afficher une chaine
+    ecall
+    lw a0, 0(sp)
+    lw a7, 4(sp)
+    addi sp, sp, 16
+    ret
