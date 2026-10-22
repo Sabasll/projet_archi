@@ -1,3 +1,73 @@
+# TEST AUTONOME RARS RV32 (une seule partie par fichier)
+
+# ===== MAIN DE TEST =====
+.data
+p4_title: .asciz "--- Partie 4 : bits ---\n"
+p4_msg1: .asciz "B_getBit(13,2) -> attendu 1 : "
+p4_msg2: .asciz "\nB_setBit(13,1,1) -> attendu 15 : "
+p4_msg3: .asciz "\nB_print(276) -> "
+p4_msg4: .asciz "\nB_getByte(0x12345678,1) -> attendu 86 : "
+p4_msg5: .asciz "\nB_setByte(0x12345678,1,255) -> attendu 0x1234ff78 : "
+p4_nl: .asciz "\n"
+
+.text
+.globl main
+main:
+    la a0, p4_title
+    li a7, 4
+    ecall
+
+    la a0, p4_msg1
+    li a7, 4
+    ecall
+    li a0, 13
+    li a1, 2
+    jal B_getBit
+    li a7, 1
+    ecall
+
+    la a0, p4_msg2
+    li a7, 4
+    ecall
+    li a0, 13
+    li a1, 1
+    li a2, 1
+    jal B_setBit
+    li a7, 1
+    ecall
+
+    la a0, p4_msg3
+    li a7, 4
+    ecall
+    li a0, 276
+    jal B_print
+
+    la a0, p4_msg4
+    li a7, 4
+    ecall
+    li a0, 0x12345678
+    li a1, 1
+    jal B_getByte
+    li a7, 1
+    ecall
+
+    la a0, p4_msg5
+    li a7, 4
+    ecall
+    li a0, 0x12345678
+    li a1, 1
+    li a2, 255
+    jal B_setByte
+    li a7, 34
+    ecall
+
+    la a0, p4_nl
+    li a7, 4
+    ecall
+    li a7, 10
+    ecall
+
+# ===== FONCTIONS DE LA PARTIE =====
 .text
 # B_getBit
 # Entree : a0 = entier, a1 = numero du bit (0..31)
@@ -41,7 +111,7 @@ B_print_boucle:
     andi t2, t1, 7             # t2 = t1 % 8
     bnez t2, B_print_suite     # pas la fin d'un octet -> pas d'espace
     beqz t1, B_print_suite     # dernier bit (bit 0) -> pas d'espace final
-    li   a0, ESPACE            # a0 = code ASCII de l'espace
+    li   a0, 32            # a0 = code ASCII de l'espace
     li   a7, 11                # ecall 11 : print char
     ecall
 

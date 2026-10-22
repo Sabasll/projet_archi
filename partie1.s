@@ -1,5 +1,65 @@
+# TEST AUTONOME RARS RV32 (une seule partie par fichier)
+
+# ===== MAIN DE TEST =====
 .data
-espace: .asicz " "
+p1_title: .asciz "--- Partie 1 : utilitaires ---\n"
+p1_msg1:  .asciz "printInt(42) = "
+p1_msg2:  .asciz "printIntEsp(17) = "
+p1_msg3:  .asciz "printHex(0x1234ABCD) = "
+p1_msg4:  .asciz "auHasard(9), entre 0 et 9 = "
+p1_nl:    .asciz "\n"
+
+.text
+.globl main
+main:
+    la a0, p1_title
+    li a7, 4
+    ecall
+
+    la a0, p1_msg1
+    li a7, 4
+    ecall
+    li a0, 42
+    jal printInt
+    la a0, p1_nl
+    li a7, 4
+    ecall
+
+    la a0, p1_msg2
+    li a7, 4
+    ecall
+    li a0, 17
+    jal printIntEsp
+    la a0, p1_nl
+    li a7, 4
+    ecall
+
+    la a0, p1_msg3
+    li a7, 4
+    ecall
+    li a0, 0x1234ABCD
+    jal printHex
+    la a0, p1_nl
+    li a7, 4
+    ecall
+
+    la a0, p1_msg4
+    li a7, 4
+    ecall
+    li a0, 9
+    jal auHasard
+    li a7, 1
+    ecall
+    la a0, p1_nl
+    li a7, 4
+    ecall
+
+    li a7, 10
+    ecall
+
+# ===== FONCTIONS DE LA PARTIE =====
+.data
+espace: .asciz " "
 
 .text
 printInt:
@@ -54,7 +114,7 @@ printHex:
     li   a7, 34            # ecall 34 : print integer in hexadecimal
     ecall
 
-    li   a0, espace        # a0 = code ASCII de l'espace
+    la   a0, espace        # a0 = code ASCII de l'espace
     li   a7, 4            # ecall 11 : print char
     ecall
 

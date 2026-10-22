@@ -1,7 +1,108 @@
+# TEST AUTONOME RARS RV32 (une seule partie par fichier)
+
+# ===== MAIN DE TEST =====
+.data
+p3_title: .asciz "--- Partie 3 : pile ---\n"
+p3_msg1: .asciz "P_estVide apres creation (attendu 1) = "
+p3_msg2: .asciz "\nP_print apres empiler 10,20,30 (attendu 10 20 30) = "
+p3_msg3: .asciz "\nP_sommet (attendu 30) = "
+p3_msg4: .asciz "\nP_print apres depiler (attendu 10 20) = "
+p3_msg5: .asciz "\nP_estVide apres 3 depilements (attendu 1) = "
+p3_msg6: .asciz "\nTest d'erreur (depiler pile vide): "
+p3_nl: .asciz "\n"
+
+.text
+.globl main
+main:
+    la a0, p3_title
+    li a7, 4
+    ecall
+
+    li a0, 3
+    jal P_creer
+    mv s0, a0              # s0 = pile capacite 3
+
+    la a0, p3_msg1
+    li a7, 4
+    ecall
+    mv a0, s0
+    jal P_estVide
+    li a7, 1
+    ecall
+
+    mv a0, s0
+    li a1, 10
+    jal P_empiler
+    mv a0, s0
+    li a1, 20
+    jal P_empiler
+    mv a0, s0
+    li a1, 30
+    jal P_empiler
+
+    la a0, p3_msg2
+    li a7, 4
+    ecall
+    mv a0, s0
+    jal P_print
+
+    la a0, p3_msg3
+    li a7, 4
+    ecall
+    mv a0, s0
+    jal P_sommet
+    li a7, 1
+    ecall
+
+    mv a0, s0
+    jal P_depiler
+    la a0, p3_msg4
+    li a7, 4
+    ecall
+    mv a0, s0
+    jal P_print
+
+    mv a0, s0
+    jal P_depiler
+    mv a0, s0
+    jal P_depiler
+    la a0, p3_msg5
+    li a7, 4
+    ecall
+    mv a0, s0
+    jal P_estVide
+    li a7, 1
+    ecall
+
+    la a0, p3_msg6
+    li a7, 4
+    ecall
+    mv a0, s0
+    jal P_depiler
+
+    li a7, 10
+    ecall
+
+# Dependence minimale de P_print (equivalent printIntEsp de Partie 1)
+printIntEsp:
+    addi sp, sp, -16
+    sw a0, 0(sp)
+    sw a7, 4(sp)
+    li a7, 1
+    ecall
+    li a0, 32
+    li a7, 11
+    ecall
+    lw a7, 4(sp)
+    lw a0, 0(sp)
+    addi sp, sp, 16
+    ret
+
+# ===== FONCTIONS DE LA PARTIE =====
 
 .data
-msgVide:   .asicz "Erreur : la pile est vide\n"
-msgPleine: .asicz "Erreur : la pile est pleine\n"
+msgVide:   .asciz "Erreur : la pile est vide\n"
+msgPleine: .asciz "Erreur : la pile est pleine\n"
 
 .text
 # adresse pile + 0  : capacite (nombre max d'entiers)   <- constant
@@ -88,13 +189,13 @@ P_sommet_vide:
 P_empiler:
     lw   t0, 0(a0)             # t0 = capacite
     lw   t1, 4(a0)             # t1 = taille
-    bgeu  t0, t1, P_empiler_pleine   # taille >= capacite -> pleine
+    bgeu  t1, t0, P_empiler_pleine   # taille >= capacite -> pleine
 
     slli t2, t1, 2             # t2 = taille * 4
     add  t2, a0, t2            # t2 = pile + taille * 4
     sw   a1, 8(t2)             # element[taille] = a1
-    addi t0, t0, 1             # taille + 1
-    sw   t0, 4(a0)             # ecrit la nouvelle taille
+    addi t1, t1, 1             # taille + 1
+    sw   t1, 4(a0)             # ecrit la nouvelle taille
     ret
 
 P_empiler_pleine:
