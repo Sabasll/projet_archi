@@ -1,147 +1,224 @@
+
 # ============================================================
-# PARTIE 4 - les bits 
+# PARTIE 4 : LES BITS
 # ============================================================
-.include "partie1.s"
-.include "partie2.s"
-.include "partie3.s"
-.text                              # Section des instructions
-.globl main                        # Rendre main accessible
+
+.text
+.globl main                  # Declarer main comme point d'entree
+
 
 # ============================================================
 # MAIN DE TEST
+# Tester les fonctions de manipulation des bits et octets
 # ============================================================
+
 main:
-    li a0, 13                # Entier de depart
-    li a1, 2                 # Numero du bit a lire
+
+    # ===== Test de B_getBit =====
+
+    li a0, 13                # Entier de depart = 13
+    li a1, 2                 # Numero du bit a lire = 2
     jal ra, B_getBit         # Lire le bit 2 de 13
-    li a7, 1                 # Service d'affichage d'un entier
-    ecall                    # Afficher 1
-    li a0, 10                # Retour a la ligne
-    li a7, 11                # Service d'affichage d'un caractere
-    ecall                    # Afficher le retour a la ligne
 
-    li a0, 13                # Entier de depart
-    li a1, 1                 # Numero du bit a modifier
-    li a2, 1                 # Nouvelle valeur du bit
+    li a7, 1                 # Service 1 : afficher un entier
+    ecall                    # Afficher le resultat : 1
+
+    li a0, 10                # Code ASCII du retour a la ligne
+    li a7, 11                # Service 11 : afficher un caractere
+    ecall                    # Passer a la ligne suivante
+
+
+    # ===== Test de B_setBit =====
+
+    li a0, 13                # Entier initial = 13
+    li a1, 1                 # Numero du bit a modifier = 1
+    li a2, 1                 # Nouvelle valeur du bit = 1
     jal ra, B_setBit         # Mettre le bit 1 a 1
-    li a7, 1                 # Service d'affichage d'un entier
-    ecall                    # Afficher 15
-    li a0, 10                # Retour a la ligne
-    li a7, 11                # Service d'affichage d'un caractere
-    ecall                    # Afficher le retour a la ligne
 
-    li a0, 276               # Valeur binaire a afficher
-    jal ra, B_print          # Afficher ses 32 bits
-    li a0, 10                # Retour a la ligne
-    li a7, 11                # Service d'affichage d'un caractere
-    ecall                    # Afficher le retour a la ligne
+    li a7, 1                 # Service 1 : afficher un entier
+    ecall                    # Afficher le resultat : 15
 
-    li a0, 0x12345678        # Entier de depart
-    li a1, 1                 # Numero de l'octet a lire
-    jal ra, B_getByte        # Lire l'octet 1
-    li a7, 1                 # Service d'affichage d'un entier
-    ecall                    # Afficher 86
-    li a0, 10                # Retour a la ligne
-    li a7, 11                # Service d'affichage d'un caractere
-    ecall                    # Afficher le retour a la ligne
+    li a0, 10                # Code ASCII du retour a la ligne
+    li a7, 11                # Service 11 : afficher un caractere
+    ecall                    # Passer a la ligne suivante
 
-    li a0, 0x12345678        # Entier de depart
-    li a1, 1                 # Numero de l'octet a modifier
-    li a2, 255               # Nouvelle valeur de l'octet
-    jal ra, B_setByte        # Remplacer l'octet 1
-    li a7, 34                # Service d'affichage hexadecimal
-    ecall                    # Afficher 0x1234FF78
-    li a7, 10                # Service de fin de programme
-    ecall                    # Terminer le programme
+
+    # ===== Test de B_print =====
+
+    li a0, 276               # Entier a afficher en binaire
+    jal ra, B_print          # Afficher les 32 bits de 276
+
+    li a0, 10                # Code ASCII du retour a la ligne
+    li a7, 11                # Service 11 : afficher un caractere
+    ecall                    # Passer a la ligne suivante
+
+
+    # ===== Test de B_getByte =====
+
+    li a0, 0x12345678        # Entier hexadecimal initial
+    li a1, 1                 # Numero de l'octet a lire = 1
+    jal ra, B_getByte        # Extraire l'octet numero 1
+
+    li a7, 1                 # Service 1 : afficher un entier decimal
+    ecall                    # Afficher le resultat : 86
+
+    li a0, 10                # Code ASCII du retour a la ligne
+    li a7, 11                # Service 11 : afficher un caractere
+    ecall                    # Passer a la ligne suivante
+
+
+    # ===== Test de B_setByte =====
+
+    li a0, 0x12345678        # Entier hexadecimal initial
+    li a1, 1                 # Numero de l'octet a modifier = 1
+    li a2, 255               # Nouvelle valeur = 255 (0xFF)
+    jal ra, B_setByte        # Remplacer l'octet 1 par 0xFF
+
+    li a7, 34                # Service 34 : afficher en hexadecimal
+    ecall                    # Afficher le resultat : 0x1234ff78
+
+
+    # ===== Fin du programme =====
+
+    li a7, 10                # Service 10 : terminer le programme
+    ecall                    # Arreter l'execution
+
 
 # ============================================================
 # FONCTION B_getBit
-# Entree(s) : a0 = entier, a1 = indice bit
-# Objectif : Retourne le bit (0 ou 1)
+# Entrees : a0 = entier, a1 = numero du bit (0..31)
+# Sortie : a0 = valeur du bit (0 ou 1)
+# Objectif : lire un bit d'un entier
 # ============================================================
 
 B_getBit:
-    srl  t0, a0, a1                   # t0 = a0 >> a1 (le bit voulu devient le bit 0)
-    andi a0, t0, 1                    # a0 = t0 & 1 (on garde seulement ce bit)
-    ret                               # Retourner a la fonction appelante
+
+    srl t0, a0, a1           # Decaler le bit choisi vers la position 0
+    andi a0, t0, 1           # Garder uniquement ce bit
+
+    ret                      # Retourner la valeur du bit dans a0
+
 
 # ============================================================
 # FONCTION B_setBit
-# Entree(s) : a0 = entier, a1 = indice bit, a2 = valeur
-# Objectif : Modifie le bit, resultat dans a0
+# Entrees : a0 = entier, a1 = numero du bit, a2 = valeur
+# Sortie : a0 = entier modifie
+# Objectif : mettre un bit a 0 ou a 1
 # ============================================================
 
 B_setBit:
-    li   t0, 1                        # Placer 1 dans t0
-    sll  t0, t0, a1                   # t0 = 1 << a1 (masque : un seul bit a 1)
-    not  t0, t0                       # t0 = ~masque (tous les bits a 1 sauf le bit a1)
-    and  a0, a0, t0                   # a0 = a0 avec le bit a1 mis a 0
-    sll  t1, a2, a1                   # t1 = a2 << a1 (la nouvelle valeur a sa place)
-    or   a0, a0, t1                   # a0 = a0 | t1 : le bit a1 vaut maintenant a2
-    ret                               # Retourner a la fonction appelante
 
-# Affiche les 32 bits (poids fort d'abord), un espace entre chaque octet
+    # ===== Creation du masque =====
+
+    li t0, 1                 # Initialiser le masque avec 1
+    sll t0, t0, a1           # Placer le 1 sur le bit choisi
+    not t0, t0               # Inverser le masque pour effacer ce bit
+
+    # ===== Modification du bit =====
+
+    and a0, a0, t0           # Mettre le bit choisi a 0
+    sll t1, a2, a1           # Placer la nouvelle valeur sur le bit choisi
+    or a0, a0, t1            # Inserer la nouvelle valeur dans l'entier
+
+    ret                      # Retourner l'entier modifie dans a0
+
 
 # ============================================================
 # FONCTION B_print
-# Entree(s) : a0 = entier
-# Objectif : Affiche les 32 bits de gauche a droite
+# Entree : a0 = entier a afficher
+# Sortie : aucune
+# Preserve : a0 et a7
+# Objectif : afficher les 32 bits avec un espace par octet
 # ============================================================
 
 B_print:
-    addi sp, sp, -16                  # Ajouter -16 a sp ; resultat dans sp
-    sw   a0, 0(sp)                    # sauvegarde de a0
-    sw   a7, 4(sp)                    # sauvegarde de a7
 
-    mv   t0, a0                       # t0 = l'entier a afficher
-    li   t1, 31                       # t1 = numero du bit courant (on commence par 31)
+    # ===== Prologue =====
+
+    addi sp, sp, -16         # Reserver 16 octets sur la pile
+    sw a0, 0(sp)             # Sauvegarder l'entier initial
+    sw a7, 4(sp)             # Sauvegarder la valeur initiale de a7
+
+    # ===== Initialisation =====
+
+    mv t0, a0                # Conserver l'entier a afficher
+    li t1, 31                # Commencer par le bit de poids fort
+
 
 B_print_boucle:
-    srl  t2, t0, t1                   # t2 = t0 >> t1
-    andi a0, t2, 1                    # a0 = bit numero t1
-    li   a7, 1                        # ecall 1 : print integer
-    ecall                             # Executer le service RARS selectionne dans a7
 
-    andi t2, t1, 7                    # t2 = t1 % 8
-    bnez t2, B_print_suite            # pas la fin d'un octet -> pas d'espace
-    beqz t1, B_print_suite            # dernier bit (bit 0) -> pas d'espace final
-    li   a0, 32                       # a0 = code ASCII de l'espace
-    li   a7, 11                       # ecall 11 : print char
-    ecall                             # Executer le service RARS selectionne dans a7
+    # ===== Affichage du bit courant =====
+
+    srl t2, t0, t1           # Decaler le bit courant vers la position 0
+    andi a0, t2, 1           # Extraire la valeur du bit (0 ou 1)
+
+    li a7, 1                 # Service 1 : afficher un entier
+    ecall                    # Afficher le bit courant
+
+    # ===== Separation des octets =====
+
+    andi t2, t1, 7           # Calculer le reste de t1 modulo 8
+    bnez t2, B_print_suite   # Continuer si l'octet n'est pas termine
+    beqz t1, B_print_suite   # Ne pas afficher d'espace apres le dernier bit
+
+    li a0, 32                # Code ASCII 32 = espace
+    li a7, 11                # Service 11 : afficher un caractere
+    ecall                    # Afficher un espace entre deux octets
+
 
 B_print_suite:
-    addi t1, t1, -1                   # bit suivant (vers le poids faible)
-    bgez t1, B_print_boucle           # tant que t1 >= 0, on continue
 
-    lw   a7, 4(sp)                    # restauration de a7
-    lw   a0, 0(sp)                    # restauration de a0
-    addi sp, sp, 16                   # Ajouter 16 a sp ; resultat dans sp
-    ret                               # Retourner a la fonction appelante
+    addi t1, t1, -1          # Passer au bit suivant
+    bgez t1, B_print_boucle  # Continuer jusqu'au bit numero 0
+
+    # ===== Epilogue =====
+
+    lw a7, 4(sp)             # Restaurer la valeur initiale de a7
+    lw a0, 0(sp)             # Restaurer l'entier initial
+    addi sp, sp, 16          # Liberer les 16 octets reserves
+
+    ret                      # Retourner a la fonction appelante
+
 
 # ============================================================
 # FONCTION B_getByte
-# Entree(s) : a0 = entier, a1 = indice octet
-# Objectif : Retourne un octet dans a0
+# Entrees : a0 = entier, a1 = numero de l'octet (0..3)
+# Sortie : a0 = valeur de l'octet (0..255)
+# Objectif : extraire un octet d'un entier
 # ============================================================
 
 B_getByte:
-    slli t0, a1, 3                    # t0 = a1 * 8 (decalage en bits)
-    srl  t0, a0, t0                   # t0 = a0 >> (a1 * 8)
-    andi a0, t0, 255                  # a0 = t0 & 0xFF (on garde 8 bits)
-    ret                               # Retourner a la fonction appelante
+
+    slli t0, a1, 3           # Calculer le decalage : numero * 8 bits
+    srl t0, a0, t0           # Placer l'octet choisi a droite
+    andi a0, t0, 255         # Garder uniquement ses 8 bits
+
+    ret                      # Retourner la valeur de l'octet dans a0
+
 
 # ============================================================
 # FONCTION B_setByte
-# Entree(s) : a0 = entier, a1 = indice octet, a2 = valeur
-# Objectif : Modifie un octet, resultat dans a0
+# Entrees : a0 = entier, a1 = numero de l'octet, a2 = valeur
+# Sortie : a0 = entier modifie
+# Objectif : remplacer un octet d'un entier
 # ============================================================
 
 B_setByte:
-    slli t0, a1, 3                    # t0 = a1 * 8 (decalage en bits)
-    li   t1, 255                      # t1 = 0xFF
-    sll  t1, t1, t0                   # t1 = 0xFF << decalage (masque de l'octet)
-    not  t1, t1                       # t1 = ~masque
-    and  a0, a0, t1                   # a0 = a0 avec l'octet a1 mis a 0
-    sll  t2, a2, t0                   # t2 = a2 << decalage (nouvelle valeur a sa place)
-    or   a0, a0, t2                   # a0 = a0 | t2
-    ret                               # Retourner a la fonction appelante
+
+    # ===== Calcul du decalage =====
+
+    slli t0, a1, 3           # Calculer le decalage : numero * 8 bits
+
+    # ===== Creation du masque =====
+
+    li t1, 255               # Charger 0xFF, un octet avec 8 bits a 1
+    sll t1, t1, t0           # Placer le masque sur l'octet choisi
+    not t1, t1               # Inverser le masque pour effacer cet octet
+
+    # ===== Modification de l'octet =====
+
+    and a0, a0, t1           # Mettre l'ancien octet a 0
+    sll t2, a2, t0           # Placer la nouvelle valeur a sa position
+    or a0, a0, t2            # Inserer le nouvel octet dans l'entier
+
+    ret                      # Retourner l'entier modifie dans a0
