@@ -1,6 +1,5 @@
 # ============================================================
 # PARTIE 2 - PROGRAMME RARS RV32
-# Code original commente ; main minimal sans messages de test
 # ============================================================
 
 .data                              # Section des donnees
