@@ -1247,62 +1247,62 @@ L_resoudre_fin:
 # Objectif : colorier en jaune les cellules du chemin solution
 
 L_afficherSolution:
-    addi sp, sp, -48  # Reserver 48 octets pour sauvegardes locales.
-    sw ra, 0(sp)  # Sauvegarder ra sur la pile systeme.
-    sw s0, 4(sp)  # Sauvegarder s0 sur la pile systeme.
-    sw s1, 8(sp)  # Sauvegarder s1 sur la pile systeme.
-    sw s2, 12(sp)  # Sauvegarder s2 sur la pile systeme.
-    sw s3, 16(sp)  # Sauvegarder s3 sur la pile systeme.
-    sw s4, 20(sp)  # Sauvegarder s4 sur la pile systeme.
-    sw s5, 24(sp)  # Sauvegarder s5 sur la pile systeme.
-    sw s6, 28(sp)  # Sauvegarder s6 sur la pile systeme.
-    sw a0, 32(sp)  # Sauvegarder a0 sur la pile systeme.
-    sw a1, 36(sp)  # Sauvegarder a1 sur la pile systeme.
-    sw a2, 40(sp)  # Sauvegarder a2 sur la pile systeme.
-    mv s0, a0  # Copier a0 dans s0 ; la source reste inchangee.
-    lw s6, 0(s0)  # Lire un mot de 4 octets a 0(s0) dans s6.
-    lw t0, 4(s0)  # Lire un mot de 4 octets a 4(s0) dans t0.
-    mul s1, s6, t0  # s1 = s6 * t0.
-    lw s3, adresse_image  # Lire un mot de 4 octets a adresse_image dans s3.
-    li s5, 0x00FFFF00  # Charger la constante 0x00FFFF00 dans s5.
-    li s2, 0  # Charger la constante 0 dans s2.
+    addi sp, sp, -48                      # Reserver 48 octets pour sauvegardes locales.
+    sw ra, 0(sp)                          # Sauvegarder ra sur la pile systeme.
+    sw s0, 4(sp)                          # Sauvegarder s0 sur la pile systeme.
+    sw s1, 8(sp)                          # Sauvegarder s1 sur la pile systeme.
+    sw s2, 12(sp)                         # Sauvegarder s2 sur la pile systeme.
+    sw s3, 16(sp)                         # Sauvegarder s3 sur la pile systeme.
+    sw s4, 20(sp)                         # Sauvegarder s4 sur la pile systeme.
+    sw s5, 24(sp)                         # Sauvegarder s5 sur la pile systeme.
+    sw s6, 28(sp)                         # Sauvegarder s6 sur la pile systeme.
+    sw a0, 32(sp)                         # Sauvegarder a0 sur la pile systeme.
+    sw a1, 36(sp)                         # Sauvegarder a1 sur la pile systeme.
+    sw a2, 40(sp)                         # Sauvegarder a2 sur la pile systeme.
+    mv s0, a0                             # Copier a0 dans s0 ; la source reste inchangee.
+    lw s6, 0(s0)                          # Lire un mot de 4 octets a 0(s0) dans s6.
+    lw t0, 4(s0)                          # Lire un mot de 4 octets a 4(s0) dans t0.
+    mul s1, s6, t0                        # s1 = s6 * t0.
+    lw s3, adresse_image                  # Lire un mot de 4 octets a adresse_image dans s3.
+    li s5, 0x00FFFF00                     # Charger la constante 0x00FFFF00 dans s5.
+    li s2, 0                              # Charger la constante 0 dans s2.
 
 L_afficherSolution_boucle:
-    bge s2, s1, L_afficherSolution_fin  # Si s2 >= s1, aller a L_afficherSolution_fin.
-    mv a0, s2  # Copier s2 dans a0 ; la source reste inchangee.
-    mv a1, s0  # Copier s0 dans a1 ; la source reste inchangee.
-    jal ra, L_estSolution  # Appeler L_estSolution ; ra recoit l adresse de retour.
-    beqz a0, L_afficherSolution_suivante  # Si a0 == 0, aller a L_afficherSolution_suivante ; sinon continuer.
-    mv a0, s2  # Copier s2 dans a0 ; la source reste inchangee.
-    mv a1, s0  # Copier s0 dans a1 ; la source reste inchangee.
-    jal ra, L_posCelluleImage  # Appeler L_posCelluleImage ; ra recoit l adresse de retour.
-    lw t0, largeur_img  # Lire un mot de 4 octets a largeur_img dans t0.
-    mul s4, a1, t0  # s4 = a1 * t0.
-    add s4, s4, a0  # s4 = s4 + a0.
-    mv a0, s4  # Copier s4 dans a0 ; la source reste inchangee.
-    mv a1, s5  # Copier s5 dans a1 ; la source reste inchangee.
-    mv a2, s3  # Copier s3 dans a2 ; la source reste inchangee.
-    jal ra, I_plot  # Appeler I_plot ; ra recoit l adresse de retour.
-    remu t0, s2, s6  # t0 = s2 reste non signe de s6.
-    addi t1, s6, -1  # t1 = s6 + (-1).
-    bge t0, t1, L_afficherSolution_bas  # Si t0 >= t1, aller a L_afficherSolution_bas.
-    mv a0, s2  # Copier s2 dans a0 ; la source reste inchangee.
-    li a1, 1  # Charger la constante 1 dans a1.
-    mv a2, s0  # Copier s0 dans a2 ; la source reste inchangee.
-    jal ra, L_aUnMur  # Appeler L_aUnMur ; ra recoit l adresse de retour.
-    bnez a0, L_afficherSolution_bas  # Si a0 != 0, aller a L_afficherSolution_bas ; sinon continuer.
-    addi a0, s2, 1  # a0 = s2 + (1).
-    mv a1, s0  # Copier s0 dans a1 ; la source reste inchangee.
-    jal ra, L_estSolution  # Appeler L_estSolution ; ra recoit l adresse de retour.
-    beqz a0, L_afficherSolution_bas  # Si a0 == 0, aller a L_afficherSolution_bas ; sinon continuer.
-    addi a0, s4, 1  # a0 = s4 + (1).
-    mv a1, s5  # Copier s5 dans a1 ; la source reste inchangee.
-    mv a2, s3  # Copier s3 dans a2 ; la source reste inchangee.
-    jal ra, I_plot  # Appeler I_plot ; ra recoit l adresse de retour.
-    addi a0, s4, 2  # a0 = s4 + (2).
-    mv a1, s5  # Copier s5 dans a1 ; la source reste inchangee.
-    mv a2, s3  # Copier s3 dans a2 ; la source reste inchangee.
-    jal ra, I_plot  # Appeler I_plot ; ra recoit l adresse de retour.
+    bge s2, s1, L_afficherSolution_fin           # Si s2 >= s1, aller a L_afficherSolution_fin.
+    mv a0, s2                                    # Copier s2 dans a0 ; la source reste inchangee.
+    mv a1, s0                                    # Copier s0 dans a1 ; la source reste inchangee.
+    jal ra, L_estSolution                        # Appeler L_estSolution ; ra recoit l adresse de retour.
+    beqz a0, L_afficherSolution_suivante         # Si a0 == 0, aller a L_afficherSolution_suivante ; sinon continuer.
+    mv a0, s2                                    # Copier s2 dans a0 ; la source reste inchangee.
+    mv a1, s0                                    # Copier s0 dans a1 ; la source reste inchangee.
+    jal ra, L_posCelluleImage                    # Appeler L_posCelluleImage ; ra recoit l adresse de retour.
+    lw t0, largeur_img                           # Lire un mot de 4 octets a largeur_img dans t0.
+    mul s4, a1, t0                               # s4 = a1 * t0.
+    add s4, s4, a0                               # s4 = s4 + a0.
+    mv a0, s4                                    # Copier s4 dans a0 ; la source reste inchangee.
+    mv a1, s5                                    # Copier s5 dans a1 ; la source reste inchangee.
+    mv a2, s3                                    # Copier s3 dans a2 ; la source reste inchangee.
+    jal ra, I_plot                               # Appeler I_plot ; ra recoit l adresse de retour.
+    remu t0, s2, s6                              # t0 = s2 reste non signe de s6.
+    addi t1, s6, -1                              # t1 = s6 + (-1).
+    bge t0, t1, L_afficherSolution_bas           # Si t0 >= t1, aller a L_afficherSolution_bas.
+    mv a0, s2                                    # Copier s2 dans a0 ; la source reste inchangee.
+    li a1, 1                                     # Charger la constante 1 dans a1.
+    mv a2, s0                                    # Copier s0 dans a2 ; la source reste inchangee.
+    jal ra, L_aUnMur                             # Appeler L_aUnMur ; ra recoit l adresse de retour.
+    bnez a0, L_afficherSolution_bas              # Si a0 != 0, aller a L_afficherSolution_bas ; sinon continuer.
+    addi a0, s2, 1                               # a0 = s2 + (1).
+    mv a1, s0                                    # Copier s0 dans a1 ; la source reste inchangee.
+    jal ra, L_estSolution                        # Appeler L_estSolution ; ra recoit l adresse de retour.
+    beqz a0, L_afficherSolution_bas              # Si a0 == 0, aller a L_afficherSolution_bas ; sinon continuer.
+    addi a0, s4, 1                               # a0 = s4 + (1).
+    mv a1, s5                                    # Copier s5 dans a1 ; la source reste inchangee.
+    mv a2, s3                                    # Copier s3 dans a2 ; la source reste inchangee.
+    jal ra, I_plot                               # Appeler I_plot ; ra recoit l adresse de retour.
+    addi a0, s4, 2                               # a0 = s4 + (2).
+    mv a1, s5                                    # Copier s5 dans a1 ; la source reste inchangee.
+    mv a2, s3                                    # Copier s3 dans a2 ; la source reste inchangee.
+    jal ra, I_plot                               # Appeler I_plot ; ra recoit l adresse de retour.
 
 L_afficherSolution_bas:
     add t0, s2, s6  # t0 = s2 + s6.
