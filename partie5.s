@@ -1,657 +1,758 @@
+
 # ============================================================
-# PARTIE 5 - les cellules du labyrinthe
+# PARTIE 5 : LES CELLULES DU LABYRINTHE
 # ============================================================
 
-.data                              # Section des donnees
-largeur_img: .word 64           # Largeur de l'image
-hauteur_img: .word 64           # Hauteur de l'image
-adresse_image: .word 0          # Adresse de l'image utilisee pour dessiner
+.data
 
-.text                              # Section des instructions
-.globl main                        # Rendre main accessible
+adresse_image: .word 0              # Adresse de base de l'image
+
+.text
+.globl main                         # Declarer main comme point d'entree
+
 
 # ============================================================
 # MAIN DE TEST
+# Creer un labyrinthe et afficher deux cellules voisines
 # ============================================================
+
 main:
-    jal ra, I_creer          # Allouer la memoire de l'image
-    la t0, adresse_image     # Charger l'adresse de la variable image
-    sw a0, 0(t0)             # Memoriser la base de l'image
 
-    jal ra, L_creer          # Creer un labyrinthe de 21 x 21 cellules
-    mv s0, a0                # Conserver l'adresse du labyrinthe
+    # ===== Creation de l'image =====
 
-    li a0, 0                 # Indice de la premiere cellule
-    li a1, 1                 # Direction droite
-    mv a2, s0                # Adresse du labyrinthe
-    jal ra, L_casserMur      # Ouvrir le mur droit de la cellule 0
+    jal ra, I_creer                  # Allouer la memoire pour une image de 64 x 64 pixels
+    la t0, adresse_image             # Charger l'adresse de la variable adresse_image
+    sw a0, 0(t0)                     # Memoriser l'adresse de base de l'image
 
-    li a0, 1                 # Indice de la cellule voisine
-    li a1, 3                 # Direction gauche
-    mv a2, s0                # Adresse du labyrinthe
-    jal ra, L_casserMur      # Ouvrir le mur gauche de la cellule 1
+    # ===== Creation du labyrinthe =====
 
-    li a0, 0                 # Indice de la premiere cellule
-    li a1, 0x00FF0000        # Couleur rouge
-    mv a2, s0                # Adresse du labyrinthe
-    jal ra, L_afficherCellule # Dessiner la premiere cellule
+    jal ra, L_creer                  # Creer un labyrinthe de 21 x 21 cellules
+    mv s0, a0                        # Conserver l'adresse du labyrinthe dans s0
 
-    li a0, 1                 # Indice de la deuxieme cellule
-    li a1, 0x0000FF00        # Couleur verte
-    mv a2, s0                # Adresse du labyrinthe
-    jal ra, L_afficherCellule # Dessiner la deuxieme cellule
+    # ===== Casser le mur droit de la cellule 0 =====
 
-    li a7, 10                # Service de fin de programme
-    ecall                    # Terminer le programme
+    li a0, 0                         # Indice de la premiere cellule
+    li a1, 1                         # Direction droite
+    mv a2, s0                        # Charger l'adresse du labyrinthe
+    jal ra, L_casserMur              # Supprimer le mur droit de la cellule 0
+
+    # ===== Casser le mur gauche de la cellule 1 =====
+
+    li a0, 1                         # Indice de la cellule voisine
+    li a1, 3                         # Direction gauche
+    mv a2, s0                        # Charger l'adresse du labyrinthe
+    jal ra, L_casserMur              # Supprimer le mur gauche de la cellule 1
+
+    # ===== Afficher la cellule 0 en rouge =====
+
+    li a0, 0                         # Indice de la premiere cellule
+    li a1, 0x00FF0000                # Couleur rouge au format RGB
+    mv a2, s0                        # Charger l'adresse du labyrinthe
+    jal ra, L_afficherCellule        # Dessiner la cellule 0 et son passage
+
+    # ===== Afficher la cellule 1 en vert =====
+
+    li a0, 1                         # Indice de la deuxieme cellule
+    li a1, 0x0000FF00                # Couleur verte au format RGB
+    mv a2, s0                        # Charger l'adresse du labyrinthe
+    jal ra, L_afficherCellule        # Dessiner la cellule 1 et son passage
+
+    # ===== Fin du programme =====
+
+    li a7, 10                        # Service 10 : terminer le programme
+    ecall                            # Arreter l'execution
+
 
 # ============================================================
 # FONCTION L_creer
-# Entree(s) : aucune
-# Objectif : Cree le labyrinthe ferme, adresse dans a0
+# Entree : aucune
+# Sortie : a0 = adresse du labyrinthe
+# Objectif : creer un labyrinthe avec tous les murs fermes
 # ============================================================
 
 L_creer:
-    addi sp, sp, -16                  # Ajouter -16 a sp ; resultat dans sp
-    sw   a7, 0(sp)                    # Sauvegarder a7 dans 0(sp)
 
-    lw   t0, largeur_img              # Charger dans t0 la valeur situee a largeur_img
-    lw   t1, hauteur_img              # Charger dans t1 la valeur situee a hauteur_img
-    li   t2, 3                        # Placer 3 dans t2
+    # ===== Prologue =====
 
-    divu t0, t0, t2                   # Nombre de colonnes
-    divu t1, t1, t2                   # Nombre de lignes
+    addi sp, sp, -16                 # Reserver 16 octets sur la pile
+    sw a7, 0(sp)                     # Sauvegarder la valeur initiale de a7
 
-    mul  t3, t0, t1                   # Nombre total de cellules
-    slli a0, t3, 2                    # 4 octets par cellule
-    addi a0, a0, 8                    # Ajouter les dimensions
+    # ===== Calcul des dimensions =====
 
-    li   a7, 9                        # sbrk
-    ecall                             # Executer le service RARS selectionne dans a7
+    lw t0, largeur_img               # Charger la largeur de l'image
+    lw t1, hauteur_img               # Charger la hauteur de l'image
+    li t2, 3                         # Les centres des cellules sont espaces de 3 pixels
 
-    sw   t0, 0(a0)                    # Sauvegarder t0 dans 0(a0)
-    sw   t1, 4(a0)                    # Sauvegarder t1 dans 4(a0)
+    divu t0, t0, t2                  # Calculer le nombre de colonnes
+    divu t1, t1, t2                  # Calculer le nombre de lignes
 
-    addi t4, a0, 8                    # Adresse de la premiere cellule
-    li   t5, 15                       # Bits 0, 1, 2 et 3 a 1
+    # ===== Calcul de la memoire necessaire =====
+
+    mul t3, t0, t1                   # Calculer le nombre total de cellules
+    slli a0, t3, 2                   # Multiplier par 4 octets par cellule
+    addi a0, a0, 8                   # Ajouter 8 octets pour les dimensions
+
+    # ===== Allocation de memoire =====
+
+    li a7, 9                         # Service 9 : allocation avec sbrk
+    ecall                            # Allouer la memoire dans le tas
+
+    # ===== Stockage des dimensions =====
+
+    sw t0, 0(a0)                     # Stocker le nombre de colonnes
+    sw t1, 4(a0)                     # Stocker le nombre de lignes
+
+    # ===== Initialisation des cellules =====
+
+    addi t4, a0, 8                   # Pointer vers la premiere cellule
+    li t5, 15                        # Initialiser les quatre bits des murs a 1
 
 L_creer_boucle:
-    beqz t3, L_creer_fin              # Si egal a zero, aller a L_creer_fin
-    sw   t5, 0(t4)                    # Initialiser une cellule
-    addi t4, t4, 4                    # Cellule suivante
-    addi t3, t3, -1                   # Ajouter -1 a t3 ; resultat dans t3
-    j    L_creer_boucle               # Aller a L_creer_boucle
+
+    beqz t3, L_creer_fin             # Terminer si toutes les cellules sont initialisees
+    sw t5, 0(t4)                     # Fermer les quatre murs de la cellule
+    addi t4, t4, 4                   # Passer a la cellule suivante
+    addi t3, t3, -1                  # Diminuer le nombre de cellules restantes
+    j L_creer_boucle                 # Recommencer l'initialisation
 
 L_creer_fin:
-    lw   a7, 0(sp)                    # Charger dans a7 la valeur situee a 0(sp)
-    addi sp, sp, 16                   # Ajouter 16 a sp ; resultat dans sp
-    ret                               # Retourner a la fonction appelante
+
+    # ===== Epilogue =====
+
+    lw a7, 0(sp)                     # Restaurer la valeur initiale de a7
+    addi sp, sp, 16                  # Liberer les 16 octets reserves
+    ret                              # Retourner l'adresse du labyrinthe
+
 
 # ============================================================
 # FONCTION L_indiceToCoords
-# Entree(s) : a0 = indice cellule, a1 = labyrinthe
-# Objectif : Retourne x dans a0 et y dans a1
+# Entrees : a0 = indice, a1 = adresse du labyrinthe
+# Sorties : a0 = x, a1 = y
+# Objectif : convertir un indice en coordonnees
 # ============================================================
 
 L_indiceToCoords:
-    lw   t0, 0(a1)                    # t0 = nombre de colonnes
-    remu t1, a0, t0                   # t1 = x
-    divu t2, a0, t0                   # t2 = y
-    mv   a0, t1                       # Copier t1 dans a0
-    mv   a1, t2                       # Copier t2 dans a1
-    ret                               # Retourner a la fonction appelante
+
+    lw t0, 0(a1)                     # Charger le nombre de colonnes
+    remu t1, a0, t0                  # Calculer x = indice modulo colonnes
+    divu t2, a0, t0                  # Calculer y = indice divise par colonnes
+    mv a0, t1                        # Retourner x dans a0
+    mv a1, t2                        # Retourner y dans a1
+    ret                              # Retourner a la fonction appelante
+
 
 # ============================================================
 # FONCTION L_coordsToIndice
-# Entree(s) : a0 = x, a1 = y, a2 = labyrinthe
-# Objectif : Retourne l'indice de la cellule dans a0
+# Entrees : a0 = x, a1 = y, a2 = adresse du labyrinthe
+# Sortie : a0 = indice
+# Objectif : convertir les coordonnees en indice
 # ============================================================
 
 L_coordsToIndice:
-    lw   t0, 0(a2)                    # t0 = nombre de colonnes
-    mul  t1, a1, t0                   # t1 = y * colonnes
-    add  a0, t1, a0                   # a0 = y * colonnes + x
-    ret                               # Retourner a la fonction appelante
 
-#          a2 = adresse du labyrinthe
+    lw t0, 0(a2)                     # Charger le nombre de colonnes
+    mul t1, a1, t0                   # Calculer y * colonnes
+    add a0, t1, a0                   # Ajouter x pour obtenir l'indice
+    ret                              # Retourner l'indice dans a0
+
 
 # ============================================================
 # FONCTION L_aUnMur
-# Entree(s) : a0 = indice, a1 = direction, a2 = labyrinthe
-# Objectif : Retourne 1 si un mur est present
+# Entrees : a0 = indice, a1 = direction, a2 = labyrinthe
+# Sortie : a0 = 1 si le mur existe, 0 sinon
+# Directions : 0 haut, 1 droite, 2 bas, 3 gauche
 # ============================================================
 
 L_aUnMur:
-    addi sp, sp, -16                  # Ajouter -16 a sp ; resultat dans sp
-    sw   ra, 0(sp)                    # Sauvegarder ra dans 0(sp)
 
-    slli t0, a0, 2                    # Decaler a gauche de 2 a a0 ; resultat dans t0
-    add  t0, a2, t0                   # Ajouter a2 et t0 ; resultat dans t0
-    lw   a0, 8(t0)                    # a0 = valeur de la cellule
-    jal  ra, B_getBit                 # a1 = numero du bit = direction
+    # ===== Prologue =====
 
-    lw   ra, 0(sp)                    # Charger dans ra la valeur situee a 0(sp)
-    addi sp, sp, 16                   # Ajouter 16 a sp ; resultat dans sp
-    ret                               # Retourner a la fonction appelante
+    addi sp, sp, -16                 # Reserver 16 octets sur la pile
+    sw ra, 0(sp)                     # Sauvegarder l'adresse de retour
 
-# Ne casse que ce cote (la voisine doit casser son mur oppose)
+    # ===== Lire la cellule =====
+
+    slli t0, a0, 2                   # Calculer indice * 4 octets
+    add t0, a2, t0                   # Ajouter le decalage a la base du labyrinthe
+    lw a0, 8(t0)                     # Charger les bits de la cellule
+
+    # ===== Tester le mur =====
+
+    jal ra, B_getBit                 # Lire le bit correspondant a la direction
+
+    # ===== Epilogue =====
+
+    lw ra, 0(sp)                     # Restaurer l'adresse de retour
+    addi sp, sp, 16                  # Liberer les 16 octets reserves
+    ret                              # Retourner 1 ou 0 dans a0
+
 
 # ============================================================
 # FONCTION L_casserMur
-# Entree(s) : a0 = indice, a1 = direction, a2 = labyrinthe
-# Objectif : Efface le bit du mur pour ce seul cote
+# Entrees : a0 = indice, a1 = direction, a2 = labyrinthe
+# Sortie : aucune
+# Objectif : supprimer un mur d'une cellule
 # ============================================================
 
 L_casserMur:
-    addi sp, sp, -16                  # Ajouter -16 a sp ; resultat dans sp
-    sw   ra, 0(sp)                    # Sauvegarder ra dans 0(sp)
-    sw   a0, 4(sp)                    # Sauvegarder a0 dans 4(sp)
-    sw   a2, 8(sp)                    # Sauvegarder a2 dans 8(sp)
 
-    slli t0, a0, 2                    # Decaler a gauche de 2 a a0 ; resultat dans t0
-    add  t0, a2, t0                   # Ajouter a2 et t0 ; resultat dans t0
-    lw   a0, 8(t0)                    # a0 = valeur de la cellule
-    li   a2, 0                        # bit a 0
-    jal  ra, B_setBit                 # Appeler B_setBit et memoriser le retour dans ra
+    # ===== Prologue =====
 
-    lw   t1, 4(sp)                    # indice
-    lw   t2, 8(sp)                    # adresse du labyrinthe
-    slli t1, t1, 2                    # Decaler a gauche de 2 a t1 ; resultat dans t1
-    add  t1, t2, t1                   # Ajouter t2 et t1 ; resultat dans t1
-    sw   a0, 8(t1)                    # ecrit la nouvelle valeur
+    addi sp, sp, -16                 # Reserver 16 octets sur la pile
+    sw ra, 0(sp)                     # Sauvegarder l'adresse de retour
+    sw a0, 4(sp)                     # Sauvegarder l'indice de la cellule
+    sw a2, 8(sp)                     # Sauvegarder l'adresse du labyrinthe
 
-    lw   ra, 0(sp)                    # Charger dans ra la valeur situee a 0(sp)
-    lw   a0, 4(sp)                    # Charger dans a0 la valeur situee a 4(sp)
-    lw   a2, 8(sp)                    # Charger dans a2 la valeur situee a 8(sp)
-    addi sp, sp, 16                   # Ajouter 16 a sp ; resultat dans sp
-    ret                               # Retourner a la fonction appelante
+    # ===== Lire les bits de la cellule =====
+
+    slli t0, a0, 2                   # Calculer le decalage indice * 4
+    add t0, a2, t0                   # Calculer l'adresse de la cellule
+    lw a0, 8(t0)                     # Charger la valeur de la cellule
+
+    # ===== Effacer le bit du mur =====
+
+    li a2, 0                         # Choisir la valeur 0 pour le bit
+    jal ra, B_setBit                 # Mettre a 0 le bit du mur indique par a1
+
+    # ===== Enregistrer la cellule modifiee =====
+
+    lw t1, 4(sp)                     # Recuperer l'indice de la cellule
+    lw t2, 8(sp)                     # Recuperer l'adresse du labyrinthe
+    slli t1, t1, 2                   # Convertir l'indice en decalage
+    add t1, t2, t1                   # Calculer l'adresse de la cellule
+    sw a0, 8(t1)                     # Enregistrer les bits modifies
+
+    # ===== Epilogue =====
+
+    lw ra, 0(sp)                     # Restaurer l'adresse de retour
+    lw a0, 4(sp)                     # Restaurer l'indice initial
+    lw a2, 8(sp)                     # Restaurer l'adresse du labyrinthe
+    addi sp, sp, 16                  # Liberer les 16 octets reserves
+    ret                              # Retourner a la fonction appelante
+
 
 # ============================================================
 # FONCTION L_estDepart
-# Entree(s) : a0 = indice, a1 = labyrinthe
-# Objectif : Teste le bit 4 : depart
+# Entrees : a0 = indice, a1 = labyrinthe
+# Sortie : a0 = valeur du bit 4
+# Objectif : savoir si la cellule est le depart
 # ============================================================
 
 L_estDepart:
-    addi sp, sp, -16                  # Ajouter -16 a sp ; resultat dans sp
-    sw   ra, 0(sp)                    # Sauvegarder ra dans 0(sp)
-    sw   a1, 4(sp)                    # Sauvegarder a1 dans 4(sp)
 
-    slli t0, a0, 2                    # Decaler a gauche de 2 a a0 ; resultat dans t0
-    add  t0, a1, t0                   # Ajouter a1 et t0 ; resultat dans t0
-    lw   a0, 8(t0)                    # Charger dans a0 la valeur situee a 8(t0)
-    li   a1, 4                        # Bit "depart"
-    jal  ra, B_getBit                 # Appeler B_getBit et memoriser le retour dans ra
+    addi sp, sp, -16                 # Reserver 16 octets sur la pile
+    sw ra, 0(sp)                     # Sauvegarder l'adresse de retour
+    sw a1, 4(sp)                     # Sauvegarder l'adresse du labyrinthe
 
-    lw   a1, 4(sp)                    # Charger dans a1 la valeur situee a 4(sp)
-    lw   ra, 0(sp)                    # Charger dans ra la valeur situee a 0(sp)
-    addi sp, sp, 16                   # Ajouter 16 a sp ; resultat dans sp
-    ret                               # Retourner a la fonction appelante
+    slli t0, a0, 2                   # Calculer indice * 4
+    add t0, a1, t0                   # Localiser la cellule
+    lw a0, 8(t0)                     # Charger les bits de la cellule
+    li a1, 4                         # Choisir le bit 4 : depart
+    jal ra, B_getBit                 # Lire la valeur du bit depart
+
+    lw a1, 4(sp)                     # Restaurer l'adresse du labyrinthe
+    lw ra, 0(sp)                     # Restaurer l'adresse de retour
+    addi sp, sp, 16                  # Liberer la pile
+    ret                              # Retourner le resultat dans a0
+
 
 # ============================================================
 # FONCTION L_estArrivee
-# Entree(s) : a0 = indice, a1 = labyrinthe
-# Objectif : Teste le bit 5 : arrivee
+# Entrees : a0 = indice, a1 = labyrinthe
+# Sortie : a0 = valeur du bit 5
+# Objectif : savoir si la cellule est l'arrivee
 # ============================================================
 
 L_estArrivee:
-    addi sp, sp, -16                  # Ajouter -16 a sp ; resultat dans sp
-    sw   ra, 0(sp)                    # Sauvegarder ra dans 0(sp)
-    sw   a1, 4(sp)                    # Sauvegarder a1 dans 4(sp)
 
-    slli t0, a0, 2                    # Decaler a gauche de 2 a a0 ; resultat dans t0
-    add  t0, a1, t0                   # Ajouter a1 et t0 ; resultat dans t0
-    lw   a0, 8(t0)                    # Charger dans a0 la valeur situee a 8(t0)
-    li   a1, 5                        # Bit "arrivee"
-    jal  ra, B_getBit                 # Appeler B_getBit et memoriser le retour dans ra
+    addi sp, sp, -16                 # Reserver 16 octets sur la pile
+    sw ra, 0(sp)                     # Sauvegarder l'adresse de retour
+    sw a1, 4(sp)                     # Sauvegarder l'adresse du labyrinthe
 
-    lw   a1, 4(sp)                    # Charger dans a1 la valeur situee a 4(sp)
-    lw   ra, 0(sp)                    # Charger dans ra la valeur situee a 0(sp)
-    addi sp, sp, 16                   # Ajouter 16 a sp ; resultat dans sp
-    ret                               # Retourner a la fonction appelante
+    slli t0, a0, 2                   # Calculer indice * 4
+    add t0, a1, t0                   # Localiser la cellule
+    lw a0, 8(t0)                     # Charger les bits de la cellule
+    li a1, 5                         # Choisir le bit 5 : arrivee
+    jal ra, B_getBit                 # Lire la valeur du bit arrivee
+
+    lw a1, 4(sp)                     # Restaurer l'adresse du labyrinthe
+    lw ra, 0(sp)                     # Restaurer l'adresse de retour
+    addi sp, sp, 16                  # Liberer la pile
+    ret                              # Retourner le resultat dans a0
+
 
 # ============================================================
 # FONCTION L_estVisitee
-# Entree(s) : a0 = indice, a1 = labyrinthe
-# Objectif : Teste le bit 6 : visitee
+# Entrees : a0 = indice, a1 = labyrinthe
+# Sortie : a0 = valeur du bit 6
+# Objectif : savoir si la cellule a deja ete visitee
 # ============================================================
 
 L_estVisitee:
-    addi sp, sp, -16                  # Ajouter -16 a sp ; resultat dans sp
-    sw   ra, 0(sp)                    # Sauvegarder ra dans 0(sp)
-    sw   a1, 4(sp)                    # Sauvegarder a1 dans 4(sp)
 
-    slli t0, a0, 2                    # Decaler a gauche de 2 a a0 ; resultat dans t0
-    add  t0, a1, t0                   # Ajouter a1 et t0 ; resultat dans t0
-    lw   a0, 8(t0)                    # Charger dans a0 la valeur situee a 8(t0)
-    li   a1, 6                        # Bit "visitee"
-    jal  ra, B_getBit                 # Appeler B_getBit et memoriser le retour dans ra
+    addi sp, sp, -16                 # Reserver 16 octets sur la pile
+    sw ra, 0(sp)                     # Sauvegarder l'adresse de retour
+    sw a1, 4(sp)                     # Sauvegarder l'adresse du labyrinthe
 
-    lw   a1, 4(sp)                    # Charger dans a1 la valeur situee a 4(sp)
-    lw   ra, 0(sp)                    # Charger dans ra la valeur situee a 0(sp)
-    addi sp, sp, 16                   # Ajouter 16 a sp ; resultat dans sp
-    ret                               # Retourner a la fonction appelante
+    slli t0, a0, 2                   # Calculer indice * 4
+    add t0, a1, t0                   # Localiser la cellule
+    lw a0, 8(t0)                     # Charger les bits de la cellule
+    li a1, 6                         # Choisir le bit 6 : visitee
+    jal ra, B_getBit                 # Lire le bit visitee
+
+    lw a1, 4(sp)                     # Restaurer l'adresse du labyrinthe
+    lw ra, 0(sp)                     # Restaurer l'adresse de retour
+    addi sp, sp, 16                  # Liberer la pile
+    ret                              # Retourner le resultat dans a0
+
 
 # ============================================================
 # FONCTION L_estSolution
-# Entree(s) : a0 = indice, a1 = labyrinthe
-# Objectif : Teste le bit 7 : solution
+# Entrees : a0 = indice, a1 = labyrinthe
+# Sortie : a0 = valeur du bit 7
+# Objectif : savoir si la cellule appartient a la solution
 # ============================================================
 
 L_estSolution:
-    addi sp, sp, -16                  # Ajouter -16 a sp ; resultat dans sp
-    sw   ra, 0(sp)                    # Sauvegarder ra dans 0(sp)
-    sw   a1, 4(sp)                    # Sauvegarder a1 dans 4(sp)
 
-    slli t0, a0, 2                    # Decaler a gauche de 2 a a0 ; resultat dans t0
-    add  t0, a1, t0                   # Ajouter a1 et t0 ; resultat dans t0
-    lw   a0, 8(t0)                    # Charger dans a0 la valeur situee a 8(t0)
-    li   a1, 7                        # Bit "solution"
-    jal  ra, B_getBit                 # Appeler B_getBit et memoriser le retour dans ra
+    addi sp, sp, -16                 # Reserver 16 octets sur la pile
+    sw ra, 0(sp)                     # Sauvegarder l'adresse de retour
+    sw a1, 4(sp)                     # Sauvegarder l'adresse du labyrinthe
 
-    lw   a1, 4(sp)                    # Charger dans a1 la valeur situee a 4(sp)
-    lw   ra, 0(sp)                    # Charger dans ra la valeur situee a 0(sp)
-    addi sp, sp, 16                   # Ajouter 16 a sp ; resultat dans sp
-    ret                               # Retourner a la fonction appelante
+    slli t0, a0, 2                   # Calculer indice * 4
+    add t0, a1, t0                   # Localiser la cellule
+    lw a0, 8(t0)                     # Charger les bits de la cellule
+    li a1, 7                         # Choisir le bit 7 : solution
+    jal ra, B_getBit                 # Lire le bit solution
+
+    lw a1, 4(sp)                     # Restaurer l'adresse du labyrinthe
+    lw ra, 0(sp)                     # Restaurer l'adresse de retour
+    addi sp, sp, 16                  # Liberer la pile
+    ret                              # Retourner le resultat dans a0
+
 
 # ============================================================
 # FONCTION L_defDepart
-# Entree(s) : a0 = indice, a1 = labyrinthe
-# Objectif : Active le bit 4 : depart
+# Entrees : a0 = indice, a1 = labyrinthe
+# Sortie : aucune
+# Objectif : activer le bit 4 : depart
 # ============================================================
 
 L_defDepart:
-    addi sp, sp, -16                  # Ajouter -16 a sp ; resultat dans sp
-    sw   ra, 0(sp)                    # Sauvegarder ra dans 0(sp)
-    sw   a0, 4(sp)                    # Sauvegarder a0 dans 4(sp)
-    sw   a1, 8(sp)                    # Sauvegarder a1 dans 8(sp)
-    sw   a2, 12(sp)                   # Sauvegarder a2 dans 12(sp)
 
-    slli t0, a0, 2                    # Decaler a gauche de 2 a a0 ; resultat dans t0
-    add  t0, a1, t0                   # Ajouter a1 et t0 ; resultat dans t0
-    lw   a0, 8(t0)                    # a0 = valeur de la cellule
-    li   a1, 4                        # Bit "depart"
-    li   a2, 1                        # Placer 1 dans a2
-    jal  ra, B_setBit                 # a0 = nouvelle valeur
+    # ===== Prologue =====
 
-    lw   t0, 4(sp)                    # Charger dans t0 la valeur situee a 4(sp)
-    lw   t1, 8(sp)                    # Charger dans t1 la valeur situee a 8(sp)
-    slli t0, t0, 2                    # Decaler a gauche de 2 a t0 ; resultat dans t0
-    add  t0, t1, t0                   # Ajouter t1 et t0 ; resultat dans t0
-    sw   a0, 8(t0)                    # Sauvegarder a0 dans 8(t0)
+    addi sp, sp, -16                 # Reserver 16 octets sur la pile
+    sw ra, 0(sp)                     # Sauvegarder l'adresse de retour
+    sw a0, 4(sp)                     # Sauvegarder l'indice de la cellule
+    sw a1, 8(sp)                     # Sauvegarder la base du labyrinthe
+    sw a2, 12(sp)                    # Sauvegarder a2
 
-    lw   a0, 4(sp)                    # Charger dans a0 la valeur situee a 4(sp)
-    lw   a1, 8(sp)                    # Charger dans a1 la valeur situee a 8(sp)
-    lw   a2, 12(sp)                   # Charger dans a2 la valeur situee a 12(sp)
-    lw   ra, 0(sp)                    # Charger dans ra la valeur situee a 0(sp)
-    addi sp, sp, 16                   # Ajouter 16 a sp ; resultat dans sp
-    ret                               # Retourner a la fonction appelante
+    # ===== Lire et modifier la cellule =====
+
+    slli t0, a0, 2                   # Calculer indice * 4
+    add t0, a1, t0                   # Localiser la cellule
+    lw a0, 8(t0)                     # Charger les bits de la cellule
+    li a1, 4                         # Choisir le bit 4 : depart
+    li a2, 1                         # Choisir la nouvelle valeur 1
+    jal ra, B_setBit                 # Activer le bit depart
+
+    # ===== Enregistrer la modification =====
+
+    lw t0, 4(sp)                     # Recuperer l'indice de la cellule
+    lw t1, 8(sp)                     # Recuperer la base du labyrinthe
+    slli t0, t0, 2                   # Convertir l'indice en octets
+    add t0, t1, t0                   # Localiser la cellule
+    sw a0, 8(t0)                     # Enregistrer la cellule modifiee
+
+    # ===== Epilogue =====
+
+    lw a0, 4(sp)                     # Restaurer l'indice initial
+    lw a1, 8(sp)                     # Restaurer la base du labyrinthe
+    lw a2, 12(sp)                    # Restaurer a2
+    lw ra, 0(sp)                     # Restaurer l'adresse de retour
+    addi sp, sp, 16                  # Liberer la pile
+    ret                              # Retourner a la fonction appelante
+
 
 # ============================================================
 # FONCTION L_defArrivee
-# Entree(s) : a0 = indice, a1 = labyrinthe
-# Objectif : Active le bit 5 : arrivee
+# Entrees : a0 = indice, a1 = labyrinthe
+# Sortie : aucune
+# Objectif : activer le bit 5 : arrivee
 # ============================================================
 
 L_defArrivee:
-    addi sp, sp, -16                  # Ajouter -16 a sp ; resultat dans sp
-    sw   ra, 0(sp)                    # Sauvegarder ra dans 0(sp)
-    sw   a0, 4(sp)                    # Sauvegarder a0 dans 4(sp)
-    sw   a1, 8(sp)                    # Sauvegarder a1 dans 8(sp)
-    sw   a2, 12(sp)                   # Sauvegarder a2 dans 12(sp)
 
-    slli t0, a0, 2                    # Decaler a gauche de 2 a a0 ; resultat dans t0
-    add  t0, a1, t0                   # Ajouter a1 et t0 ; resultat dans t0
-    lw   a0, 8(t0)                    # Charger dans a0 la valeur situee a 8(t0)
-    li   a1, 5                        # Bit "arrivee"
-    li   a2, 1                        # Placer 1 dans a2
-    jal  ra, B_setBit                 # Appeler B_setBit et memoriser le retour dans ra
+    # ===== Prologue =====
 
-    lw   t0, 4(sp)                    # Charger dans t0 la valeur situee a 4(sp)
-    lw   t1, 8(sp)                    # Charger dans t1 la valeur situee a 8(sp)
-    slli t0, t0, 2                    # Decaler a gauche de 2 a t0 ; resultat dans t0
-    add  t0, t1, t0                   # Ajouter t1 et t0 ; resultat dans t0
-    sw   a0, 8(t0)                    # Sauvegarder a0 dans 8(t0)
+    addi sp, sp, -16                 # Reserver 16 octets sur la pile
+    sw ra, 0(sp)                     # Sauvegarder l'adresse de retour
+    sw a0, 4(sp)                     # Sauvegarder l'indice de la cellule
+    sw a1, 8(sp)                     # Sauvegarder l'adresse du labyrinthe
+    sw a2, 12(sp)                    # Sauvegarder a2
 
-    lw   a0, 4(sp)                    # Charger dans a0 la valeur situee a 4(sp)
-    lw   a1, 8(sp)                    # Charger dans a1 la valeur situee a 8(sp)
-    lw   a2, 12(sp)                   # Charger dans a2 la valeur situee a 12(sp)
-    lw   ra, 0(sp)                    # Charger dans ra la valeur situee a 0(sp)
-    addi sp, sp, 16                   # Ajouter 16 a sp ; resultat dans sp
-    ret                               # Retourner a la fonction appelante
+    # ===== Activer le bit arrivee =====
+
+    slli t0, a0, 2                   # Calculer indice * 4
+    add t0, a1, t0                   # Localiser la cellule
+    lw a0, 8(t0)                     # Charger la valeur de la cellule
+    li a1, 5                         # Choisir le bit 5 : arrivee
+    li a2, 1                         # Choisir la nouvelle valeur 1
+    jal ra, B_setBit                 # Activer le bit arrivee
+
+    # ===== Enregistrer la modification =====
+
+    lw t0, 4(sp)                     # Recuperer l'indice de la cellule
+    lw t1, 8(sp)                     # Recuperer la base du labyrinthe
+    slli t0, t0, 2                   # Convertir l'indice en octets
+    add t0, t1, t0                   # Localiser la cellule
+    sw a0, 8(t0)                     # Enregistrer la cellule modifiee
+
+    # ===== Epilogue =====
+
+    lw a0, 4(sp)                     # Restaurer l'indice initial
+    lw a1, 8(sp)                     # Restaurer la base du labyrinthe
+    lw a2, 12(sp)                    # Restaurer a2
+    lw ra, 0(sp)                     # Restaurer l'adresse de retour
+    addi sp, sp, 16                  # Liberer la pile
+    ret                              # Retourner a la fonction appelante
+
 
 # ============================================================
 # FONCTION L_defVisitee
-# Entree(s) : a0 = indice, a1 = labyrinthe
-# Objectif : Active le bit 6 : visitee
+# Entrees : a0 = indice, a1 = labyrinthe
+# Sortie : aucune
+# Objectif : activer le bit 6 : visitee
 # ============================================================
 
 L_defVisitee:
-    addi sp, sp, -16                  # Ajouter -16 a sp ; resultat dans sp
-    sw   ra, 0(sp)                    # Sauvegarder ra dans 0(sp)
-    sw   a0, 4(sp)                    # Sauvegarder a0 dans 4(sp)
-    sw   a1, 8(sp)                    # Sauvegarder a1 dans 8(sp)
-    sw   a2, 12(sp)                   # Sauvegarder a2 dans 12(sp)
 
-    slli t0, a0, 2                    # Decaler a gauche de 2 a a0 ; resultat dans t0
-    add  t0, a1, t0                   # Ajouter a1 et t0 ; resultat dans t0
-    lw   a0, 8(t0)                    # Charger dans a0 la valeur situee a 8(t0)
-    li   a1, 6                        # Bit "visitee"
-    li   a2, 1                        # Placer 1 dans a2
-    jal  ra, B_setBit                 # Appeler B_setBit et memoriser le retour dans ra
+    addi sp, sp, -16                 # Reserver 16 octets sur la pile
+    sw ra, 0(sp)                     # Sauvegarder l'adresse de retour
+    sw a0, 4(sp)                     # Sauvegarder l'indice de la cellule
+    sw a1, 8(sp)                     # Sauvegarder l'adresse du labyrinthe
+    sw a2, 12(sp)                    # Sauvegarder a2
 
-    lw   t0, 4(sp)                    # Charger dans t0 la valeur situee a 4(sp)
-    lw   t1, 8(sp)                    # Charger dans t1 la valeur situee a 8(sp)
-    slli t0, t0, 2                    # Decaler a gauche de 2 a t0 ; resultat dans t0
-    add  t0, t1, t0                   # Ajouter t1 et t0 ; resultat dans t0
-    sw   a0, 8(t0)                    # Sauvegarder a0 dans 8(t0)
+    # ===== Activer le bit visitee =====
 
-    lw   a0, 4(sp)                    # Charger dans a0 la valeur situee a 4(sp)
-    lw   a1, 8(sp)                    # Charger dans a1 la valeur situee a 8(sp)
-    lw   a2, 12(sp)                   # Charger dans a2 la valeur situee a 12(sp)
-    lw   ra, 0(sp)                    # Charger dans ra la valeur situee a 0(sp)
-    addi sp, sp, 16                   # Ajouter 16 a sp ; resultat dans sp
-    ret                               # Retourner a la fonction appelante
+    slli t0, a0, 2                   # Calculer indice * 4
+    add t0, a1, t0                   # Localiser la cellule
+    lw a0, 8(t0)                     # Charger la valeur de la cellule
+    li a1, 6                         # Choisir le bit 6 : visitee
+    li a2, 1                         # Choisir la nouvelle valeur 1
+    jal ra, B_setBit                 # Activer le bit visitee
+
+    # ===== Enregistrer la modification =====
+
+    lw t0, 4(sp)                     # Recuperer l'indice de la cellule
+    lw t1, 8(sp)                     # Recuperer la base du labyrinthe
+    slli t0, t0, 2                   # Convertir l'indice en octets
+    add t0, t1, t0                   # Localiser la cellule
+    sw a0, 8(t0)                     # Enregistrer la cellule modifiee
+
+    # ===== Epilogue =====
+
+    lw a0, 4(sp)                     # Restaurer l'indice initial
+    lw a1, 8(sp)                     # Restaurer la base du labyrinthe
+    lw a2, 12(sp)                    # Restaurer a2
+    lw ra, 0(sp)                     # Restaurer l'adresse de retour
+    addi sp, sp, 16                  # Liberer la pile
+    ret                              # Retourner a la fonction appelante
+
 
 # ============================================================
 # FONCTION L_defSolution
-# Entree(s) : a0 = indice, a1 = labyrinthe
-# Objectif : Active le bit 7 : solution
+# Entrees : a0 = indice, a1 = labyrinthe
+# Sortie : aucune
+# Objectif : activer le bit 7 : solution
 # ============================================================
 
 L_defSolution:
-    addi sp, sp, -16                  # Ajouter -16 a sp ; resultat dans sp
-    sw   ra, 0(sp)                    # Sauvegarder ra dans 0(sp)
-    sw   a0, 4(sp)                    # Sauvegarder a0 dans 4(sp)
-    sw   a1, 8(sp)                    # Sauvegarder a1 dans 8(sp)
-    sw   a2, 12(sp)                   # Sauvegarder a2 dans 12(sp)
 
-    slli t0, a0, 2                    # Decaler a gauche de 2 a a0 ; resultat dans t0
-    add  t0, a1, t0                   # Ajouter a1 et t0 ; resultat dans t0
-    lw   a0, 8(t0)                    # Charger dans a0 la valeur situee a 8(t0)
-    li   a1, 7                        # Bit "solution"
-    li   a2, 1                        # Placer 1 dans a2
-    jal  ra, B_setBit                 # Appeler B_setBit et memoriser le retour dans ra
+    addi sp, sp, -16                 # Reserver 16 octets sur la pile
+    sw ra, 0(sp)                     # Sauvegarder l'adresse de retour
+    sw a0, 4(sp)                     # Sauvegarder l'indice de la cellule
+    sw a1, 8(sp)                     # Sauvegarder l'adresse du labyrinthe
+    sw a2, 12(sp)                    # Sauvegarder a2
 
-    lw   t0, 4(sp)                    # Charger dans t0 la valeur situee a 4(sp)
-    lw   t1, 8(sp)                    # Charger dans t1 la valeur situee a 8(sp)
-    slli t0, t0, 2                    # Decaler a gauche de 2 a t0 ; resultat dans t0
-    add  t0, t1, t0                   # Ajouter t1 et t0 ; resultat dans t0
-    sw   a0, 8(t0)                    # Sauvegarder a0 dans 8(t0)
+    # ===== Activer le bit solution =====
 
-    lw   a0, 4(sp)                    # Charger dans a0 la valeur situee a 4(sp)
-    lw   a1, 8(sp)                    # Charger dans a1 la valeur situee a 8(sp)
-    lw   a2, 12(sp)                   # Charger dans a2 la valeur situee a 12(sp)
-    lw   ra, 0(sp)                    # Charger dans ra la valeur situee a 0(sp)
-    addi sp, sp, 16                   # Ajouter 16 a sp ; resultat dans sp
-    ret                               # Retourner a la fonction appelante
+    slli t0, a0, 2                   # Calculer indice * 4
+    add t0, a1, t0                   # Localiser la cellule
+    lw a0, 8(t0)                     # Charger la valeur de la cellule
+    li a1, 7                         # Choisir le bit 7 : solution
+    li a2, 1                         # Choisir la nouvelle valeur 1
+    jal ra, B_setBit                 # Activer le bit solution
+
+    # ===== Enregistrer la modification =====
+
+    lw t0, 4(sp)                     # Recuperer l'indice de la cellule
+    lw t1, 8(sp)                     # Recuperer la base du labyrinthe
+    slli t0, t0, 2                   # Convertir l'indice en octets
+    add t0, t1, t0                   # Localiser la cellule
+    sw a0, 8(t0)                     # Enregistrer la cellule modifiee
+
+    # ===== Epilogue =====
+
+    lw a0, 4(sp)                     # Restaurer l'indice initial
+    lw a1, 8(sp)                     # Restaurer la base du labyrinthe
+    lw a2, 12(sp)                    # Restaurer a2
+    lw ra, 0(sp)                     # Restaurer l'adresse de retour
+    addi sp, sp, 16                  # Liberer la pile
+    ret                              # Retourner a la fonction appelante
+
 
 # ============================================================
 # FONCTION L_estDedans
-# Entree(s) : a0 = x, a1 = y, a2 = labyrinthe
-# Objectif : Retourne 1 si (x,y) est dans le labyrinthe
+# Entrees : a0 = x, a1 = y, a2 = labyrinthe
+# Sortie : a0 = 1 si dedans, 0 sinon
+# Objectif : verifier les limites du labyrinthe
 # ============================================================
 
 L_estDedans:
-    blt  a0, zero, L_estDedans_non    # Si a0 est inferieur a zero, aller a L_estDedans_non
-    blt  a1, zero, L_estDedans_non    # Si a1 est inferieur a zero, aller a L_estDedans_non
 
-    lw   t0, 0(a2)                    # t0 = nombre de colonnes
-    lw   t1, 4(a2)                    # t1 = nombre de lignes
+    blt a0, zero, L_estDedans_non     # Refuser une coordonnee x negative
+    blt a1, zero, L_estDedans_non     # Refuser une coordonnee y negative
 
-    bge  a0, t0, L_estDedans_non      # Si a0 est superieur ou egal a t0, aller a L_estDedans_non
-    bge  a1, t1, L_estDedans_non      # Si a1 est superieur ou egal a t1, aller a L_estDedans_non
+    lw t0, 0(a2)                     # Charger le nombre de colonnes
+    lw t1, 4(a2)                     # Charger le nombre de lignes
 
-    li   a0, 1                        # Placer 1 dans a0
-    ret                               # Retourner a la fonction appelante
+    bge a0, t0, L_estDedans_non       # Refuser x si x >= colonnes
+    bge a1, t1, L_estDedans_non       # Refuser y si y >= lignes
+
+    li a0, 1                         # Les coordonnees sont dans le labyrinthe
+    ret                              # Retourner 1
 
 L_estDedans_non:
-    li   a0, 0                        # Placer 0 dans a0
-    ret                               # Retourner a la fonction appelante
 
-#          a2 = direction (0 haut, 1 droite, 2 bas, 3 gauche)
+    li a0, 0                         # Les coordonnees sont hors du labyrinthe
+    ret                              # Retourner 0
+
 
 # ============================================================
 # FONCTION L_voisinDir
-# Entree(s) : a0 = x, a1 = y, a2 = direction
-# Objectif : Retourne les coordonnees du voisin
+# Entrees : a0 = x, a1 = y, a2 = direction
+# Sorties : a0 = x du voisin, a1 = y du voisin
+# Objectif : calculer les coordonnees d'une cellule voisine
 # ============================================================
 
 L_voisinDir:
-    beqz a2, L_voisin_haut            # Si egal a zero, aller a L_voisin_haut
 
-    li   t0, 1                        # Placer 1 dans t0
-    beq  a2, t0, L_voisin_droite      # Si a2 est egaux a t0, aller a L_voisin_droite
+    beqz a2, L_voisin_haut           # Direction 0 : aller vers le haut
 
-    li   t0, 2                        # Placer 2 dans t0
-    beq  a2, t0, L_voisin_bas         # Si a2 est egaux a t0, aller a L_voisin_bas
+    li t0, 1                         # Direction droite = 1
+    beq a2, t0, L_voisin_droite       # Aller a droite si direction = 1
 
-    li   t0, 3                        # Placer 3 dans t0
-    beq  a2, t0, L_voisin_gauche      # Si a2 est egaux a t0, aller a L_voisin_gauche
+    li t0, 2                         # Direction bas = 2
+    beq a2, t0, L_voisin_bas          # Aller en bas si direction = 2
 
-    ret                               # Retourner a la fonction appelante
+    li t0, 3                         # Direction gauche = 3
+    beq a2, t0, L_voisin_gauche       # Aller a gauche si direction = 3
+
+    ret                              # Ne rien modifier si direction invalide
 
 L_voisin_haut:
-    addi a1, a1, -1                   # y = y - 1
-    ret                               # Retourner a la fonction appelante
+
+    addi a1, a1, -1                  # Diminuer y de 1
+    ret                              # Retourner les nouvelles coordonnees
 
 L_voisin_droite:
-    addi a0, a0, 1                    # x = x + 1
-    ret                               # Retourner a la fonction appelante
+
+    addi a0, a0, 1                   # Augmenter x de 1
+    ret                              # Retourner les nouvelles coordonnees
 
 L_voisin_bas:
-    addi a1, a1, 1                    # y = y + 1
-    ret                               # Retourner a la fonction appelante
+
+    addi a1, a1, 1                   # Augmenter y de 1
+    ret                              # Retourner les nouvelles coordonnees
 
 L_voisin_gauche:
-    addi a0, a0, -1                   # x = x - 1
-    ret                               # Retourner a la fonction appelante
 
-#          a1 = adresse du labyrinthe
-#          a1 = y du centre dans l'image
+    addi a0, a0, -1                  # Diminuer x de 1
+    ret                              # Retourner les nouvelles coordonnees
+
 
 # ============================================================
 # FONCTION L_posCelluleImage
-# Entree(s) : a0 = indice, a1 = labyrinthe
-# Objectif : Retourne le centre de la cellule dans l'image
+# Entrees : a0 = indice, a1 = labyrinthe
+# Sorties : a0 = x_image, a1 = y_image
+# Objectif : trouver le centre d'une cellule dans l'image
 # ============================================================
 
 L_posCelluleImage:
-    addi sp, sp, -16                  # Ajouter -16 a sp ; resultat dans sp
-    sw   ra, 0(sp)                    # Sauvegarder ra dans 0(sp)
 
-    # Convertir indice en coordonnees de cellule
-    jal  ra, L_indiceToCoords         # Appeler L_indiceToCoords et memoriser le retour dans ra
+    # ===== Prologue =====
 
-    # Calculer le centre dans l'image
-    li   t0, 3                        # Placer 3 dans t0
+    addi sp, sp, -16                 # Reserver 16 octets sur la pile
+    sw ra, 0(sp)                     # Sauvegarder l'adresse de retour
 
-    mul  a0, a0, t0                   # x = x * 3
-    addi a0, a0, 1                    # x_image = 3*x + 1
+    # ===== Conversion de l'indice =====
 
-    mul  a1, a1, t0                   # y = y * 3
-    addi a1, a1, 1                    # y_image = 3*y + 1
+    jal ra, L_indiceToCoords         # Obtenir les coordonnees de la cellule
 
-    lw   ra, 0(sp)                    # Charger dans ra la valeur situee a 0(sp)
-    addi sp, sp, 16                   # Ajouter 16 a sp ; resultat dans sp
-    ret                               # Retourner a la fonction appelante
+    # ===== Calcul du centre =====
 
-#           a1 = couleur
-#           a2 = adresse du labyrinthe
+    li t0, 3                         # Les centres sont espaces de 3 pixels
+
+    mul a0, a0, t0                   # Calculer 3 * x
+    addi a0, a0, 1                   # Centre horizontal = 3*x + 1
+
+    mul a1, a1, t0                   # Calculer 3 * y
+    addi a1, a1, 1                   # Centre vertical = 3*y + 1
+
+    # ===== Epilogue =====
+
+    lw ra, 0(sp)                     # Restaurer l'adresse de retour
+    addi sp, sp, 16                  # Liberer les 16 octets reserves
+    ret                              # Retourner les coordonnees du centre
+
 
 # ============================================================
 # FONCTION L_afficherCellule
-# Entree(s) : a0 = indice, a1 = couleur, a2 = labyrinthe
-# Objectif : Dessine le centre et les passages sans mur
+# Entrees : a0 = indice, a1 = couleur, a2 = labyrinthe
+# Sortie : aucune
+# Objectif : dessiner le centre et les passages ouverts
 # ============================================================
 
 L_afficherCellule:
-    addi sp, sp, -48                  # Ajouter -48 a sp ; resultat dans sp
-    sw ra, 0(sp)                      # Sauvegarder ra dans 0(sp)
-    sw s0, 4(sp)                      # Sauvegarder s0 dans 4(sp)
-    sw s1, 8(sp)                      # Sauvegarder s1 dans 8(sp)
-    sw s2, 12(sp)                     # Sauvegarder s2 dans 12(sp)
-    sw s3, 16(sp)                     # Sauvegarder s3 dans 16(sp)
-    sw s4, 20(sp)                     # Sauvegarder s4 dans 20(sp)
-    sw s5, 24(sp)                     # Sauvegarder s5 dans 24(sp)
-    sw a7, 28(sp)                     # Sauvegarder a7 dans 28(sp)
-
-    # Conserver les arguments
-    mv s0, a0                         # Indice de la cellule
-    mv s1, a1                         # Couleur
-    mv s2, a2                         # Adresse du labyrinthe
-
-    # Charger l'adresse de l'image
-    la t0, adresse_image              # Charger l'adresse de adresse_image dans t0
-    lw s3, 0(t0)                      # Charger dans s3 la valeur situee a 0(t0)
-
-    # Trouver les coordonnees du centre
-    mv a0, s0                         # Indice de la cellule
-    mv a1, s2                         # Adresse du labyrinthe
-    jal ra, L_posCelluleImage         # Appeler L_posCelluleImage et memoriser le retour dans ra
-
-    # Indice du centre = y * largeur + x
-    lw t0, largeur_img                # Charger dans t0 la valeur situee a largeur_img
-    mul s4, a1, t0                    # Multiplier a1 et t0 ; resultat dans s4
-    add s4, s4, a0                    # Ajouter s4 et a0 ; resultat dans s4
-
-    # Colorier le centre
-    mv a0, s4                         # Copier s4 dans a0
-    mv a1, s1                         # Copier s1 dans a1
-    mv a2, s3                         # Copier s3 dans a2
-    jal ra, I_plot                    # Appeler I_plot et memoriser le retour dans ra
-
-    # Direction initiale : haut
-    li s5, 0                          # Placer 0 dans s5
-
-L_afficherCellule_boucle:
-    # Terminer apres les 4 directions
-    li t0, 4                          # Placer 4 dans t0
-    bge s5, t0, L_afficherCellule_fin # Si s5 est superieur ou egal a t0, aller a L_afficherCellule_fin
-
-    # Tester la presence d'un mur
-    mv a0, s0                         # Copier s0 dans a0
-    mv a1, s5                         # Copier s5 dans a1
-    mv a2, s2                         # Copier s2 dans a2
-    jal ra, L_aUnMur                  # Appeler L_aUnMur et memoriser le retour dans ra
-
-    # Mur present : passer a la direction suivante
-    bnez a0, L_afficherCellule_suite  # Si different de zero, aller a L_afficherCellule_suite
-
-    # Partir de l'indice du centre
-    mv t0, s4                         # Copier s4 dans t0
-
-    beqz s5, L_afficherCellule_haut   # Si egal a zero, aller a L_afficherCellule_haut
-
-    li t1, 1                          # Placer 1 dans t1
-    beq s5, t1, L_afficherCellule_droite # Si s5 est egaux a t1, aller a L_afficherCellule_droite
-
-    li t1, 2                          # Placer 2 dans t1
-    beq s5, t1, L_afficherCellule_bas # Si s5 est egaux a t1, aller a L_afficherCellule_bas
-
-    # Gauche : indice - 1
-    addi t0, t0, -1                   # Ajouter -1 a t0 ; resultat dans t0
-    j L_afficherCellule_tracer        # Aller a L_afficherCellule_tracer
-
-L_afficherCellule_haut:
-    # Haut : indice - largeur
-    lw t1, largeur_img                # Charger dans t1 la valeur situee a largeur_img
-    sub t0, t0, t1                    # Soustraire t0 et t1 ; resultat dans t0
-    j L_afficherCellule_tracer        # Aller a L_afficherCellule_tracer
-
-L_afficherCellule_droite:
-    # Droite : indice + 1
-    addi t0, t0, 1                    # Ajouter 1 a t0 ; resultat dans t0
-    j L_afficherCellule_tracer        # Aller a L_afficherCellule_tracer
-
-L_afficherCellule_bas:
-    # Bas : indice + largeur
-    lw t1, largeur_img                # Charger dans t1 la valeur situee a largeur_img
-    add t0, t0, t1                    # Ajouter t0 et t1 ; resultat dans t0
-
-L_afficherCellule_tracer:
-    # Colorier le passage
-    mv a0, t0                         # Copier t0 dans a0
-    mv a1, s1                         # Copier s1 dans a1
-    mv a2, s3                         # Copier s3 dans a2
-    jal ra, I_plot                    # Appeler I_plot et memoriser le retour dans ra
-
-L_afficherCellule_suite:
-    addi s5, s5, 1                    # Ajouter 1 a s5 ; resultat dans s5
-    j L_afficherCellule_boucle        # Aller a L_afficherCellule_boucle
-
-L_afficherCellule_fin:
-    # Restaurer les arguments AVANT les registres s
-    mv a0, s0                         # Copier s0 dans a0
-    mv a1, s1                         # Copier s1 dans a1
-    mv a2, s2                         # Copier s2 dans a2
-    lw a7, 28(sp)                     # Charger dans a7 la valeur situee a 28(sp)
-    lw s5, 24(sp)                     # Charger dans s5 la valeur situee a 24(sp)
-    lw s4, 20(sp)                     # Charger dans s4 la valeur situee a 20(sp)
-    lw s3, 16(sp)                     # Charger dans s3 la valeur situee a 16(sp)
-    lw s2, 12(sp)                     # Charger dans s2 la valeur situee a 12(sp)
-    lw s1, 8(sp)                      # Charger dans s1 la valeur situee a 8(sp)
-    lw s0, 4(sp)                      # Charger dans s0 la valeur situee a 4(sp)
-    lw ra, 0(sp)                      # Charger dans ra la valeur situee a 0(sp)
-    addi sp, sp, 48                   # Ajouter 48 a sp ; resultat dans sp
-    ret                               # Retourner a la fonction appelante
-
-# ============================================================
-# DEPENDANCES REQUISES DE LA PARTIE 4
-# ============================================================
-
-# FONCTION B_getBit : Retourne le bit (0 ou 1)
-B_getBit:
-    srl  t0, a0, a1                   # t0 = a0 >> a1 (le bit voulu devient le bit 0)
-    andi a0, t0, 1                    # a0 = t0 & 1 (on garde seulement ce bit)
-    ret                               # Retourner a la fonction appelante
-
-
-# FONCTION B_setBit : Modifie le bit, resultat dans a0
-B_setBit:
-    li   t0, 1                        # Placer 1 dans t0
-    sll  t0, t0, a1                   # t0 = 1 << a1 (masque : un seul bit a 1)
-    not  t0, t0                       # t0 = ~masque (tous les bits a 1 sauf le bit a1)
-    and  a0, a0, t0                   # a0 = a0 avec le bit a1 mis a 0
-    sll  t1, a2, a1                   # t1 = a2 << a1 (la nouvelle valeur a sa place)
-    or   a0, a0, t1                   # a0 = a0 | t1 : le bit a1 vaut maintenant a2
-    ret                               # Retourner a la fonction appelante
-
-# Affiche les 32 bits (poids fort d'abord), un espace entre chaque octet
-
-
-# ============================================================
-# DEPENDANCES REQUISES DE LA PARTIE 2
-# ============================================================
-
-# FONCTION I_creer : Alloue largeur x hauteur x 4 octets, adresse dans a0
-I_creer:
 
     # ===== Prologue =====
-    addi sp, sp, -16                  # Ajouter -16 a sp ; resultat dans sp
-    sw a7, 0(sp)                      # Sauvegarder a7 dans 0(sp)
 
-    # Calculer le nombre de pixels (units)
-    lw t0, largeur_img                # Charger la largeur dans t0
-    lw t1, hauteur_img                # Charger la hauteur dans t1
-    mul t2, t0, t1                    # Multiplier t0 et t1 ; resultat dans t2
-    slli a0, t2, 2                    # Decaler a gauche de 2 a t2 ; resultat dans a0
-    li a7, 9                          # ecall 9 : sbrk (allocation dans le tas)
-    ecall                             # Executer le service RARS selectionne dans a7
+    addi sp, sp, -48                 # Reserver 48 octets sur la pile
+    sw ra, 0(sp)                     # Sauvegarder l'adresse de retour
+    sw s0, 4(sp)                     # Sauvegarder s0
+    sw s1, 8(sp)                     # Sauvegarder s1
+    sw s2, 12(sp)                    # Sauvegarder s2
+    sw s3, 16(sp)                    # Sauvegarder s3
+    sw s4, 20(sp)                    # Sauvegarder s4
+    sw s5, 24(sp)                    # Sauvegarder s5
+    sw a7, 28(sp)                    # Sauvegarder a7
 
-    lw a7, 0(sp)                      # restauration de a7
-    addi sp, sp, 16                   # Ajouter 16 a sp ; resultat dans sp
-    ret                               # Retourner a la fonction appelante
+    # ===== Conserver les arguments =====
+
+    mv s0, a0                        # Conserver l'indice de la cellule
+    mv s1, a1                        # Conserver la couleur
+    mv s2, a2                        # Conserver l'adresse du labyrinthe
+
+    # ===== Recuperer la base de l'image =====
+
+    la t0, adresse_image             # Charger l'adresse de la variable globale
+    lw s3, 0(t0)                     # Recuperer l'adresse de base de l'image
+
+    # ===== Calculer le centre de la cellule =====
+
+    mv a0, s0                        # Charger l'indice de la cellule
+    mv a1, s2                        # Charger l'adresse du labyrinthe
+    jal ra, L_posCelluleImage        # Calculer les coordonnees du centre
+
+    lw t0, largeur_img               # Charger la largeur de l'image
+    mul s4, a1, t0                   # Calculer y_image * largeur
+    add s4, s4, a0                   # Ajouter x_image pour obtenir l'indice du pixel
+
+    # ===== Colorier le centre =====
+
+    mv a0, s4                        # Charger l'indice du pixel central
+    mv a1, s1                        # Charger la couleur
+    mv a2, s3                        # Charger la base de l'image
+    jal ra, I_plot                   # Colorier le centre de la cellule
+
+    # ===== Initialiser la direction =====
+
+    li s5, 0                         # Commencer par la direction haut
+
+L_afficherCellule_boucle:
+
+    # ===== Verifier les quatre directions =====
+
+    li t0, 4                         # Nombre total de directions = 4
+    bge s5, t0, L_afficherCellule_fin # Terminer apres les quatre directions
+
+    # ===== Tester si un mur existe =====
+
+    mv a0, s0                        # Charger l'indice de la cellule
+    mv a1, s5                        # Charger la direction courante
+    mv a2, s2                        # Charger l'adresse du labyrinthe
+    jal ra, L_aUnMur                 # Tester la presence du mur
+
+    bnez a0, L_afficherCellule_suite # Passer si un mur bloque la direction
+
+    # ===== Calculer le pixel du passage =====
+
+    mv t0, s4                        # Partir de l'indice du pixel central
+
+    beqz s5, L_afficherCellule_haut  # Traiter la direction haut
+
+    li t1, 1                         # Direction droite = 1
+    beq s5, t1, L_afficherCellule_droite # Traiter la direction droite
+
+    li t1, 2                         # Direction bas = 2
+    beq s5, t1, L_afficherCellule_bas # Traiter la direction bas
+
+    # ===== Direction gauche =====
+
+    addi t0, t0, -1                  # Pixel situe a gauche du centre
+    j L_afficherCellule_tracer       # Passer au dessin du passage
+
+L_afficherCellule_haut:
+
+    lw t1, largeur_img               # Charger la largeur de l'image
+    sub t0, t0, t1                   # Pixel situe au-dessus du centre
+    j L_afficherCellule_tracer       # Passer au dessin du passage
+
+L_afficherCellule_droite:
+
+    addi t0, t0, 1                   # Pixel situe a droite du centre
+    j L_afficherCellule_tracer       # Passer au dessin du passage
+
+L_afficherCellule_bas:
+
+    lw t1, largeur_img               # Charger la largeur de l'image
+    add t0, t0, t1                   # Pixel situe en dessous du centre
+
+L_afficherCellule_tracer:
+
+    # ===== Colorier le passage ouvert =====
+
+    mv a0, t0                        # Charger l'indice du pixel du passage
+    mv a1, s1                        # Utiliser la couleur de la cellule
+    mv a2, s3                        # Charger la base de l'image
+    jal ra, I_plot                   # Colorier le passage
+
+L_afficherCellule_suite:
+
+    # ===== Direction suivante =====
+
+    addi s5, s5, 1                   # Augmenter la direction de 1
+    j L_afficherCellule_boucle       # Recommencer pour la direction suivante
+
+L_afficherCellule_fin:
+
+    # ===== Restaurer les arguments =====
+
+    mv a0, s0                        # Restaurer l'indice de la cellule
+    mv a1, s1                        # Restaurer la couleur
+    mv a2, s2                        # Restaurer la base du labyrinthe
+
+    # ===== Epilogue =====
+
+    lw a7, 28(sp)                    # Restaurer a7
+    lw s5, 24(sp)                    # Restaurer s5
+    lw s4, 20(sp)                    # Restaurer s4
+    lw s3, 16(sp)                    # Restaurer s3
+    lw s2, 12(sp)                    # Restaurer s2
+    lw s1, 8(sp)                     # Restaurer s1
+    lw s0, 4(sp)                     # Restaurer s0
+    lw ra, 0(sp)                     # Restaurer l'adresse de retour
+    addi sp, sp, 48                  # Liberer les 48 octets reserves
+    ret                              # Retourner a la fonction appelante
 
 
-# FONCTION I_plot : Ecrit la couleur du pixel
-I_plot:
+# ============================================================
+# DEPENDANCES DES PARTIES PRECEDENTES
+# ============================================================
 
-# Colorie le pixel P : adresse = base + indice * 4
+.include "partie2.s"    # Fonctions de gestion de l'image
+.include "partie4.s"    # Fonctions de manipulation des bits
 
-    slli t0, a0, 2                    # t0 = indice * 4 (decalage en octets)
-    add  t0, a2, t0                   # t0 = base + decalage = adresse du pixel
-    sw   a1, 0(t0)                    # ecrit la couleur dans la memoire image
-    ret                               # Retourner a la fonction appelante
-
-# Chaque pixel occupe 4 octets.
 
