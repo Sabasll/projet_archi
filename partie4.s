@@ -1,7 +1,9 @@
 # ============================================================
 # PARTIE 4 - les bits 
 # ============================================================
-
+.include "partie1.s"
+.include "partie2.s"
+.include "partie3.s"
 .text                              # Section des instructions
 .globl main                        # Rendre main accessible
 
