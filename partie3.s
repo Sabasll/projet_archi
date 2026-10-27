@@ -1,7 +1,8 @@
 # ============================================================
 # PARTIE 3 - les piles
 # ============================================================
-
+.include "partie1.s"
+.include "partie2.s"
 .data                              # Section des donnees
 msgVide:   .asciz "Erreur : la pile est vide\n"     # Message en cas de pile vide
 msgPleine: .asciz "Erreur : la pile est pleine\n" # Message en cas de pile pleine
@@ -204,52 +205,6 @@ P_erreur:
     ecall                             # Executer le service RARS selectionne dans a7
     lw a0, 0(sp)                      # Charger dans a0 la valeur situee a 0(sp)
     lw a7, 4(sp)                      # Charger dans a7 la valeur situee a 4(sp)
-    addi sp, sp, 16                   # Ajouter 16 a sp ; resultat dans sp
-    ret                               # Retourner a la fonction appelante
-
-# ============================================================
-# DEPENDANCE REQUISE : printIntEsp (PARTIE 1)
-# ============================================================
-
-# FONCTION printInt : Affiche un entier decimal
-printInt:
-
-# printInt
-
-    # ===== Prologue =====
-    addi sp, sp, -16                  # Ajouter -16 a sp ; resultat dans sp
-    sw a7, 0(sp)                      # Sauvegarder a7 dans 0(sp)
-
-    # Afficher l'entier en decimal
-    li a7, 1                          # Service 1 : afficher un entier
-    ecall                             # Executer le service RARS selectionne dans a7
-
-    # ===== Epilogue =====
-    # Restaurer a7 et liberer la pile
-    lw a7, 0(sp)                      # Charger dans a7 la valeur situee a 0(sp)
-    addi sp, sp, 16                   # Ajouter 16 a sp ; resultat dans sp
-
-    ret                               # Retourner a la fonction appelante
-
-
-# FONCTION printIntEsp : Affiche un entier et un espace
-printIntEsp:
-    # ===== Prologue =====
-    addi sp, sp, -16                  # Ajouter -16 a sp ; resultat dans sp
-    sw   ra, 0(sp)                    # sauvegarde de l'adresse de retour (on appelle printInt)
-    sw   a0, 4(sp)                    # sauvegarde de a0
-    sw   a7, 8(sp)                    # Sauvegarder a7
-
-    jal  printInt                     # affiche l'entier en decimal
-
-    la   a0, espace                   # Charger l'adresse de espace dans a0
-    li   a7, 4                        # ecall 4 : print string
-    ecall                             # Executer le service RARS selectionne dans a7
-
-    # ===== Epilogue =====
-    lw   a7, 8(sp)                    # restauration de a7
-    lw   a0, 4(sp)                    # restauration de a0
-    lw   ra, 0(sp)                    # restauration de ra
     addi sp, sp, 16                   # Ajouter 16 a sp ; resultat dans sp
     ret                               # Retourner a la fonction appelante
 
