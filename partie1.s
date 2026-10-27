@@ -1,225 +1,131 @@
-
 # ============================================================
-# PARTIE 1 : UTILITAIRES
-# Programme de test autonome sous RARS RV32
+# PARTIE 1 - PROGRAMME RARS RV32
 # ============================================================
 
-.data
+.data                              # Section des donnees
+espace: .asciz " "                # Chaine contenant un espace
 
-p1_title: .asciz "Partie 1 : utilitaires\n"         # Titre du programme
-p1_msg1:  .asciz "printInt(42) = "                   # Message pour printInt
-p1_msg2:  .asciz "printIntEsp(17) = "                # Message pour printIntEsp
-p1_msg3:  .asciz "printHex(0x1234ABCD) = "          # Message pour printHex
-p1_msg4:  .asciz "auHasard(9), entre 0 et 9 = "      # Message pour auHasard
-p1_nl:    .asciz "\n"                               # Retour a la ligne
-espace:   .asciz " "                                # Chaine contenant un espace
-
-.text
-.globl main                                         # Declarer main comme point d'entree
-
+.text                              # Section des instructions
+.globl main                        # Rendre main accessible
 
 # ============================================================
 # MAIN DE TEST
-# Tester les quatre fonctions de la partie 1
 # ============================================================
-
 main:
+    li a0, 42                # Valeur a afficher en decimal
+    jal ra, printInt         # Tester printInt
+    li a0, 10                # Code ASCII du retour a la ligne
+    li a7, 11                # Service d'affichage d'un caractere
+    ecall                    # Passer a la ligne
 
-    # ===== Affichage du titre =====
+    li a0, 17                # Valeur a afficher avec un espace
+    jal ra, printIntEsp      # Tester printIntEsp
+    li a0, 0x1234ABCD        # Valeur a afficher en hexadecimal
+    jal ra, printHex         # Tester printHex
 
-    la a0, p1_title                # Charger l'adresse du titre dans a0
-    li a7, 4                       # Service 4 : afficher une chaine de caracteres
-    ecall                          # Afficher le titre dans la console
-
-    # ===== Test de printInt =====
-
-    la a0, p1_msg1                 # Charger l'adresse du message de printInt
-    li a7, 4                       # Service 4 : afficher une chaine
-    ecall                          # Afficher le message de printInt
-
-    li a0, 42                      # Placer l'entier 42 dans a0
-    jal printInt                   # Appeler printInt pour afficher 42
-
-    la a0, p1_nl                   # Charger l'adresse du retour a la ligne
-    li a7, 4                       # Service 4 : afficher une chaine
-    ecall                          # Passer a la ligne suivante
-
-    # ===== Test de printIntEsp =====
-
-    la a0, p1_msg2                 # Charger l'adresse du message de printIntEsp
-    li a7, 4                       # Service 4 : afficher une chaine
-    ecall                          # Afficher le message de printIntEsp
-
-    li a0, 17                      # Placer l'entier 17 dans a0
-    jal printIntEsp                # Afficher 17 suivi d'un espace
-
-    la a0, p1_nl                   # Charger l'adresse du retour a la ligne
-    li a7, 4                       # Service 4 : afficher une chaine
-    ecall                          # Passer a la ligne suivante
-
-    # ===== Test de printHex =====
-
-    la a0, p1_msg3                 # Charger l'adresse du message de printHex
-    li a7, 4                       # Service 4 : afficher une chaine
-    ecall                          # Afficher le message du test hexadecimal
-
-    li a0, 0x1234ABCD              # Placer une valeur hexadecimale dans a0
-    jal printHex                   # Afficher cette valeur en hexadecimal
-
-    la a0, p1_nl                   # Charger l'adresse du retour a la ligne
-    li a7, 4                       # Service 4 : afficher une chaine
-    ecall                          # Passer a la ligne suivante
-
-    # ===== Test de auHasard =====
-
-    la a0, p1_msg4                 # Charger l'adresse du message du tirage aleatoire
-    li a7, 4                       # Service 4 : afficher une chaine
-    ecall                          # Afficher le message avant le resultat
-
-    li a0, 9                       # Fixer la borne maximale incluse a 9
-    jal auHasard                   # Tirer un entier aleatoire entre 0 et 9
-
-    li a7, 1                       # Service 1 : afficher un entier decimal
-    ecall                          # Afficher le nombre aleatoire retourne dans a0
-
-    la a0, p1_nl                   # Charger l'adresse du retour a la ligne
-    li a7, 4                       # Service 4 : afficher une chaine
-    ecall                          # Passer a la ligne suivante
-
-    # ===== Fin du programme =====
-
-    li a7, 10                      # Service 10 : terminer le programme
-    ecall                          # Arreter l'execution
-
+    li a0, 9                 # Borne maximale du tirage
+    jal ra, auHasard         # Tirer une valeur entre 0 et 9
+    li a7, 1                 # Service d'affichage d'un entier
+    ecall                    # Afficher la valeur tiree
+    li a7, 10                # Service de fin de programme
+    ecall                    # Terminer le programme
 
 # ============================================================
 # FONCTION printInt
-# Entree : a0 = entier a afficher
-# Sortie : aucune
-# Preserve : a0 et a7
-# Objectif : afficher un entier en base 10
+# Entree(s) : a0 = entier
+# Objectif : Affiche un entier decimal
 # ============================================================
 
 printInt:
 
+# printInt
+
     # ===== Prologue =====
+    addi sp, sp, -16                  # Ajouter -16 a sp ; resultat dans sp
+    sw a7, 0(sp)                      # Sauvegarder a7 dans 0(sp)
 
-    addi sp, sp, -16               # Reserver 16 octets sur la pile
-    sw a7, 0(sp)                   # Sauvegarder la valeur initiale de a7
-
-    # ===== Affichage de l'entier =====
-
-    li a7, 1                       # Service 1 : afficher un entier decimal
-    ecall                          # Afficher la valeur contenue dans a0
+    # Afficher l'entier en decimal
+    li a7, 1                          # Service 1 : afficher un entier
+    ecall                             # Executer le service RARS selectionne dans a7
 
     # ===== Epilogue =====
+    # Restaurer a7 et liberer la pile
+    lw a7, 0(sp)                      # Charger dans a7 la valeur situee a 0(sp)
+    addi sp, sp, 16                   # Ajouter 16 a sp ; resultat dans sp
 
-    lw a7, 0(sp)                   # Restaurer la valeur initiale de a7
-    addi sp, sp, 16                # Liberer les 16 octets reserves
-
-    ret                            # Retourner a l'instruction suivant l'appel
-
+    ret                               # Retourner a la fonction appelante
 
 # ============================================================
 # FONCTION printIntEsp
-# Entree : a0 = entier a afficher
-# Sortie : aucune
-# Preserve : a0, a7 et ra
-# Objectif : afficher un entier decimal suivi d'un espace
+# Entree(s) : a0 = entier
+# Objectif : Affiche un entier et un espace
 # ============================================================
 
 printIntEsp:
-
     # ===== Prologue =====
+    addi sp, sp, -16                  # Ajouter -16 a sp ; resultat dans sp
+    sw   ra, 0(sp)                    # sauvegarde de l'adresse de retour (on appelle printInt)
+    sw   a0, 4(sp)                    # sauvegarde de a0
+    sw   a7, 8(sp)                    # Sauvegarder a7
 
-    addi sp, sp, -16               # Reserver 16 octets sur la pile
-    sw ra, 0(sp)                   # Sauvegarder l'adresse de retour
-    sw a0, 4(sp)                   # Sauvegarder l'entier initial
-    sw a7, 8(sp)                   # Sauvegarder le numero de service initial
+    jal  printInt                     # affiche l'entier en decimal
 
-    # ===== Affichage de l'entier =====
-
-    jal printInt                   # Appeler printInt pour afficher a0 en decimal
-
-    # ===== Affichage de l'espace =====
-
-    la a0, espace                  # Charger l'adresse de la chaine espace
-    li a7, 4                       # Service 4 : afficher une chaine
-    ecall                          # Afficher un espace apres l'entier
+    la   a0, espace                   # Charger l'adresse de espace dans a0
+    li   a7, 4                        # ecall 4 : print string
+    ecall                             # Executer le service RARS selectionne dans a7
 
     # ===== Epilogue =====
-
-    lw a7, 8(sp)                   # Restaurer la valeur initiale de a7
-    lw a0, 4(sp)                   # Restaurer la valeur initiale de a0
-    lw ra, 0(sp)                   # Restaurer l'adresse de retour
-    addi sp, sp, 16                # Liberer les 16 octets reserves
-
-    ret                            # Retourner a la fonction appelante
-
+    lw   a7, 8(sp)                    # restauration de a7
+    lw   a0, 4(sp)                    # restauration de a0
+    lw   ra, 0(sp)                    # restauration de ra
+    addi sp, sp, 16                   # Ajouter 16 a sp ; resultat dans sp
+    ret                               # Retourner a la fonction appelante
 
 # ============================================================
 # FONCTION printHex
-# Entree : a0 = entier a afficher
-# Sortie : aucune
-# Preserve : a0 et a7
-# Objectif : afficher un entier hexadecimal suivi d'un espace
+# Entree(s) : a0 = entier
+# Objectif : Affiche un entier hexadecimal et un espace
 # ============================================================
 
 printHex:
 
     # ===== Prologue =====
+    addi sp, sp, -16                  # Ajouter -16 a sp ; resultat dans sp
+    sw   a0, 0(sp)                    # sauvegarde de a0 (sera modifie pour afficher l'espace)
+    sw   a7, 4(sp)                    # sauvegarde de a7
 
-    addi sp, sp, -16               # Reserver 16 octets sur la pile
-    sw a0, 0(sp)                   # Sauvegarder l'entier a afficher
-    sw a7, 4(sp)                   # Sauvegarder le numero de service initial
+    li   a7, 34                       # ecall 34 : print integer in hexadecimal
+    ecall                             # Executer le service RARS selectionne dans a7
 
-    # ===== Affichage hexadecimal =====
-
-    li a7, 34                      # Service 34 : afficher a0 en hexadecimal
-    ecall                          # Afficher l'entier en base 16
-
-    # ===== Affichage de l'espace =====
-
-    la a0, espace                  # Charger l'adresse de la chaine espace
-    li a7, 4                       # Service 4 : afficher une chaine
-    ecall                          # Afficher un espace apres l'entier
+    la   a0, espace                   # Charger l'adresse de la chaine espace
+    li   a7, 4                        # Service 4 : afficher une chaine
+    ecall                             # Executer le service RARS selectionne dans a7
 
     # ===== Epilogue =====
-
-    lw a7, 4(sp)                   # Restaurer la valeur initiale de a7
-    lw a0, 0(sp)                   # Restaurer la valeur initiale de a0
-    addi sp, sp, 16                # Liberer les 16 octets reserves
-
-    ret                            # Retourner a la fonction appelante
-
+    lw   a7, 4(sp)                    # restauration de a7
+    lw   a0, 0(sp)                    # restauration de a0
+    addi sp, sp, 16                   # Ajouter 16 a sp ; resultat dans sp
+    ret                               # Retourner a la fonction appelante
 
 # ============================================================
 # FONCTION auHasard
-# Entree : a0 = borne maximale incluse
-# Sortie : a0 = entier aleatoire entre 0 et la borne
-# Preserve : a1 et a7
-# Objectif : tirer un entier aleatoire dans [0, a0]
+# Entree(s) : a0 = borne maximale incluse
+# Objectif : Retourne un entier aleatoire dans a0
 # ============================================================
 
 auHasard:
-
     # ===== Prologue =====
+    addi sp, sp, -16                  # Ajouter -16 a sp ; resultat dans sp
+    sw   a1, 0(sp)                    # sauvegarde de a1
+    sw   a7, 4(sp)                    # sauvegarde de a7
 
-    addi sp, sp, -16               # Reserver 16 octets sur la pile
-    sw a1, 0(sp)                   # Sauvegarder la valeur initiale de a1
-    sw a7, 4(sp)                   # Sauvegarder le numero de service initial
-
-    # ===== Preparation du tirage =====
-
-    addi a1, a0, 1                 # Borne superieure exclue = borne maximale + 1
-    li a0, 0                       # Selectionner le generateur aleatoire numero 0
-    li a7, 42                      # Service 42 : nombre aleatoire dans [0, a1)
-    ecall                          # Generer le nombre aleatoire et le placer dans a0
+    addi a1, a0, 1                    # a1 = borne haute EXCLUE (a0 + 1)
+    li   a0, 0                        # a0 = id du generateur
+    li   a7, 42                       # ecall 42 : RandIntRange -> a0 dans [0, a1)
+    ecall                             # a0 = resultat
 
     # ===== Epilogue =====
-
-    lw a7, 4(sp)                   # Restaurer la valeur initiale de a7
-    lw a1, 0(sp)                   # Restaurer la valeur initiale de a1
-    addi sp, sp, 16                # Liberer les 16 octets reserves
-
-    ret                            # Retourner le resultat aleatoire dans a0
+    lw   a7, 4(sp)                    # restauration de a7
+    lw   a1, 0(sp)                    # restauration de a1
+    addi sp, sp, 16                   # Ajouter 16 a sp ; resultat dans sp
+    ret                               # Retourner a la fonction appelante
